@@ -162,29 +162,27 @@ def run():
                 sessionDateTime = ""
                 
                 if eventFormat == "sprint_shootout":
-                    match selectedSession:
-                        case "Practice 1":
-                            sessionDateTime = sessionTimings[0]
-                        case "Qualifying":
-                            sessionDateTime = sessionTimings[1]
-                        case "Sprint Shootout":
-                            sessionDateTime = sessionTimings[2]
-                        case "Sprint":
-                            sessionDateTime = sessionTimings[3]
-                        case "Race":
-                            sessionDateTime = sessionTimings[4]   
+                    if selectedSession == "Practice 1":
+                        sessionDateTime = sessionTimings[0]
+                    elif selectedSession == "Qualifying":
+                        sessionDateTime = sessionTimings[1]
+                    elif selectedSession == "Sprint Shootout":
+                        sessionDateTime = sessionTimings[2]
+                    elif selectedSession == "Sprint":
+                        sessionDateTime = sessionTimings[3]
+                    elif selectedSession == "Race":
+                        sessionDateTime = sessionTimings[4]   
                 else:
-                    match selectedSession:
-                        case "Practice 1":
-                            sessionDateTime = sessionTimings[0]
-                        case "Practice 2":
-                            sessionDateTime = sessionTimings[1]
-                        case "Practice 3":
-                            sessionDateTime = sessionTimings[2]
-                        case "Qualifying":
-                            sessionDateTime = sessionTimings[3]
-                        case "Race":
-                            sessionDateTime = sessionTimings[4]
+                    if selectedSession == "Practice 1":
+                        sessionDateTime = sessionTimings[0]
+                    elif selectedSession == "Practice 2":
+                        sessionDateTime = sessionTimings[1]
+                    elif selectedSession == "Practice 3":
+                        sessionDateTime = sessionTimings[2]
+                    elif selectedSession == "Qualifying":
+                        sessionDateTime = sessionTimings[3]
+                    elif selectedSession == "Race":
+                        sessionDateTime = sessionTimings[4]
 
                 st.divider()
                 st.subheader("Session Results")
