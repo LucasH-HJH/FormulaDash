@@ -5,31 +5,6 @@ import time
 import streamlit as st
 import fastf1
 
-def format_time(timedelta_value):
-    """
-    Formats a timedelta object into a text representation (01:29.990),
-    handling NaN values.
-    """
-    if pd.isna(timedelta_value):
-        return "-"
-
-    total_seconds = timedelta_value.total_seconds()
-
-    # Ensure integer values for hours, minutes, seconds
-    hours = int(total_seconds // 3600)
-    remainder = total_seconds % 3600
-    minutes = int(remainder // 60)
-    seconds = int(remainder % 60)
-    milliseconds = timedelta_value.microseconds // 1000
-
-    # Format each component with leading zeros
-    formatted_hours = f"{hours:02d}"
-    formatted_minutes = f"{minutes:02d}"
-    formatted_seconds = f"{seconds:02d}.{milliseconds:03d}"
-
-    # Combine formatted components with colon separators
-    return ":".join([formatted_hours, formatted_minutes, formatted_seconds])
-
 def getSeason(year):
     season = fastf1.get_event_schedule(year)
     events = season.to_records(list)
@@ -77,8 +52,23 @@ def getSessionDetails(year,event,session):
 
 def displaySessionDetails(sessionDetails):
     df = pd.DataFrame(sessionDetails)
-    df["Time"] = df["Time"].apply(format_time)
     df = df.reset_index(drop=True)
+
+    def format_timedelta(timedelta_obj):
+        if pd.isna(timedelta_obj):
+            return "-"  # Return a placeholder for NaN values
+
+        total_seconds = timedelta_obj.total_seconds()
+        hours = int(total_seconds // 3600)
+        minutes = int((total_seconds % 3600) // 60)
+        seconds = int(total_seconds % 60)
+        milliseconds = int(total_seconds * 1000 % 1000)  # Extract milliseconds
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
+
+    # Convert Time to timedelta and format manually
+    df["Time"] = df["Time"].apply(
+        lambda x: format_timedelta(x)  # Call a separate function for formatting
+    )
 
     st.data_editor(
         df,
