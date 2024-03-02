@@ -38,16 +38,15 @@ def getSessionDetails(year,event,session):
     sessionDetails = fastf1.get_session(year, event, session)
     sessionDetails.load()
 
-    match session:
-        case "Practice 1" | "Practice 2" | "Practice 3":
+    if session == "Practice 1" or "Practice 2" or "Practice 3":
             return sessionDetails.results.loc[:, ['Position','HeadshotUrl','FullName','Abbreviation','DriverNumber','CountryCode','TeamName','ClassifiedPosition','GridPosition','Q1','Q2','Q3','Time','Status','Points']]
-        case "Qualifying":
+    elif session == "Qualifying":
             return sessionDetails.results.loc[:, ['Position','HeadshotUrl','FullName','Abbreviation','DriverNumber','CountryCode','TeamName','ClassifiedPosition','GridPosition','Q1','Q2','Q3','Time','Status','Points']]
-        case "Race":
+    elif session == "Race":
             return sessionDetails.results.loc[:, ['Position','HeadshotUrl','FullName','Abbreviation','DriverNumber','CountryCode','TeamName','ClassifiedPosition','GridPosition','Q1','Q2','Q3','Time','Status','Points']]
-        case "Sprint Shootout":
+    elif session == "Sprint Shootout":
             return sessionDetails.results.loc[:, ['Position','HeadshotUrl','FullName','Abbreviation','DriverNumber','CountryCode','TeamName','ClassifiedPosition','GridPosition','Q1','Q2','Q3','Time','Status','Points']]
-        case "Sprint":
+    elif session =="Sprint":
             return sessionDetails.results.loc[:, ['ClassifiedPosition','HeadshotUrl','FullName','Abbreviation','DriverNumber','CountryCode','TeamName','GridPosition','Time','Status','Points']] 
 
 def displaySessionDetails(sessionDetails):
@@ -190,6 +189,7 @@ def run():
                 st.divider()
                 st.subheader("Session Results")
                 st.write(selectedSession," results for the ", selectedSeason, selectedEvent, "(",sessionDateTime.strftime('%a %-d %b %Y %H:%M:%S, %Z'),")")
+                st.write("Times after the first row are the gap from the session leader.")
                 df = displaySessionDetails(sessionDetails)  
     except KeyError:
         st.error("Information is not available yet or does not exist.")
