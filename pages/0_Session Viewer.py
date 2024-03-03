@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import datetime
 import time
+from timple.timedelta import strftimedelta
 import streamlit as st
 import fastf1
 
@@ -37,40 +38,38 @@ def getSessionTimings(event):
 def getSessionDetails(year,event,session):
     sessionDetails = fastf1.get_session(year, event, session)
     sessionDetails.load()
+            
+    return sessionDetails.results.loc[:, ['ClassifiedPosition','HeadshotUrl','FullName','Abbreviation','DriverNumber','TeamName','GridPosition','Q1','Q2','Q3','Time','Status','Points']]
 
-    if session == "Practice 1" or "Practice 2" or "Practice 3":
-            return sessionDetails.results.loc[:, ['Position','HeadshotUrl','FullName','Abbreviation','DriverNumber','CountryCode','TeamName','ClassifiedPosition','GridPosition','Q1','Q2','Q3','Time','Status','Points']]
-    elif session == "Qualifying":
-            return sessionDetails.results.loc[:, ['Position','HeadshotUrl','FullName','Abbreviation','DriverNumber','CountryCode','TeamName','ClassifiedPosition','GridPosition','Q1','Q2','Q3','Time','Status','Points']]
-    elif session == "Race":
-            return sessionDetails.results.loc[:, ['Position','HeadshotUrl','FullName','Abbreviation','DriverNumber','CountryCode','TeamName','ClassifiedPosition','GridPosition','Q1','Q2','Q3','Time','Status','Points']]
-    elif session == "Sprint Shootout":
-            return sessionDetails.results.loc[:, ['Position','HeadshotUrl','FullName','Abbreviation','DriverNumber','CountryCode','TeamName','ClassifiedPosition','GridPosition','Q1','Q2','Q3','Time','Status','Points']]
-    elif session =="Sprint":
-            return sessionDetails.results.loc[:, ['ClassifiedPosition','HeadshotUrl','FullName','Abbreviation','DriverNumber','CountryCode','TeamName','GridPosition','Time','Status','Points']] 
-
-def displaySessionDetails(sessionDetails):
+def displaySessionDetails(sessionDetails, sessionName):
     df = pd.DataFrame(sessionDetails)
     df = df.reset_index(drop=True)
 
-    def format_timedelta(timedelta_obj):
-        if pd.isna(timedelta_obj):
-            return "-"  # Return a placeholder for NaN values
+    try:
+        df["Time"] = df["Time"].fillna(pd.Timedelta(seconds=0))  # Replace NaNs with 0
+        df["Time"] = df["Time"].apply(lambda x: strftimedelta(x, '%h:%m:%s.%ms'))
+        df["Q1"] = df["Q1"].fillna(pd.Timedelta(seconds=0))  # Replace NaNs with 0
+        df["Q1"] = df["Q1"].apply(lambda x: strftimedelta(x, '%h:%m:%s.%ms'))
+        df["Q2"] = df["Q2"].fillna(pd.Timedelta(seconds=0))  # Replace NaNs with 0
+        df["Q2"] = df["Q2"].apply(lambda x: strftimedelta(x, '%h:%m:%s.%ms'))
+        df["Q3"] = df["Q3"].fillna(pd.Timedelta(seconds=0))  # Replace NaNs with 0
+        df["Q3"] = df["Q3"].apply(lambda x: strftimedelta(x, '%h:%m:%s.%ms'))
+    except KeyError:
+        print("No Time")
 
-        total_seconds = timedelta_obj.total_seconds()
-        hours = int(total_seconds // 3600)
-        minutes = int((total_seconds % 3600) // 60)
-        seconds = int(total_seconds % 60)
-        milliseconds = int(total_seconds * 1000 % 1000)  # Extract milliseconds
-        return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
-
-    # Convert Time to timedelta and format manually
-    df["Time"] = df["Time"].apply(
-        lambda x: format_timedelta(x)  # Call a separate function for formatting
-    )
+    if sessionName in ["Practice 1", "Practice 2", "Practice 3"]:
+        df["ClassifiedPosition"] = df.index + 1
+        df = df.drop(columns=["GridPosition","Q1","Q2","Q3","Time","Status","Points"])
+    elif sessionName in ["Qualifying", "Sprint Shootout"]:
+        df["ClassifiedPosition"] = df.index + 1
+        df = df.drop(columns=["GridPosition","Time","Status","Points"])
+    elif sessionName in ["Race", "Sprint"]:
+        df = df.drop(columns=["Q1","Q2","Q3"])
 
     st.data_editor(
         df,
+        height=737,
+        use_container_width=True,
         column_config={
             "ClassifiedPosition": st.column_config.Column(
                 "Pos."
@@ -87,22 +86,20 @@ def displaySessionDetails(sessionDetails):
             "DriverNumber": st.column_config.TextColumn(
                 "Driver No."
             ),
-            "CountryCode": st.column_config.TextColumn(
-                "Country"
-            ),
             "TeamName": st.column_config.TextColumn(
                 "Constructor",
             ),
             "GridPosition": st.column_config.Column(
-                "Grid",
+                "Grid Pos.",
             ),
-            "Time": st.column_config.Column(
+            "Time": st.column_config.TextColumn(
                 "Time"
             ),
         },
+        disabled=True,
         hide_index=True,
     )
-
+    
     return df
 
 def run():
@@ -187,9 +184,16 @@ def run():
                 st.divider()
                 st.subheader("Session Results")
                 st.write(selectedSession," results for the ", selectedSeason, selectedEvent, "(",sessionDateTime.strftime('%a %-d %b %Y %H:%M:%S, %Z'),")")
-                st.write("Times after the first row are the gap from the session leader.")
-                df = displaySessionDetails(sessionDetails)  
-    except KeyError:
+                
+                if selectedSession in ["Practice 1","Practice 2","Practice 3"]:
+                    st.info('Practice sessions do not include times.', icon="🛈")
+                elif selectedSession in ["Qualifying","Sprint Shootout","Race","Sprint"]:
+                    st.info('Times after the first row is the gap from the session leader.', icon="🛈")
+
+                df = displaySessionDetails(sessionDetails, selectedSession)
+    
+    except KeyError as error:
+        print("An exception occurred:", error)
         st.error("Information is not available yet or does not exist.")
 
 st.set_page_config(page_title="Session Viewer", page_icon="📹", layout="wide")
