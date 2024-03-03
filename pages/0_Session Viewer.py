@@ -49,11 +49,12 @@ def displaySessionDetails(sessionDetails, sessionName):
         df["Time"] = df["Time"].fillna(pd.Timedelta(seconds=0))  # Replace NaNs with 0
         df["Time"] = df["Time"].apply(lambda x: strftimedelta(x, '%h:%m:%s.%ms'))
         df["Q1"] = df["Q1"].fillna(pd.Timedelta(seconds=0))  # Replace NaNs with 0
-        df["Q1"] = df["Q1"].apply(lambda x: strftimedelta(x, '%h:%m:%s.%ms'))
+        df["Q1"] = df["Q1"].apply(lambda x: strftimedelta(x, '%m:%s.%ms'))
         df["Q2"] = df["Q2"].fillna(pd.Timedelta(seconds=0))  # Replace NaNs with 0
-        df["Q2"] = df["Q2"].apply(lambda x: strftimedelta(x, '%h:%m:%s.%ms'))
+        df["Q2"] = df["Q2"].apply(lambda x: strftimedelta(x, '%m:%s.%ms'))
         df["Q3"] = df["Q3"].fillna(pd.Timedelta(seconds=0))  # Replace NaNs with 0
-        df["Q3"] = df["Q3"].apply(lambda x: strftimedelta(x, '%h:%m:%s.%ms'))
+        df["Q3"] = df["Q3"].apply(lambda x: strftimedelta(x, '%m:%s.%ms'))
+    
     except KeyError:
         print("No Time")
 
@@ -186,10 +187,10 @@ def run():
                 st.write(selectedSession," results for the ", selectedSeason, selectedEvent, "(",sessionDateTime.strftime('%a %-d %b %Y %H:%M:%S, %Z'),")")
                 
                 if selectedSession in ["Practice 1","Practice 2","Practice 3"]:
-                    st.info('Practice sessions do not include times.', icon="🛈")
-                elif selectedSession in ["Qualifying","Sprint Shootout","Race","Sprint"]:
-                    st.info('Times after the first row is the gap from the session leader.', icon="🛈")
-
+                    st.info('Practice sessions do not include times.', icon="ℹ️")
+                elif selectedSession in ["Race","Sprint"]:
+                    st.info('Times after the first row is the gap from the session leader.', icon="ℹ️")
+                
                 df = displaySessionDetails(sessionDetails, selectedSession)
     
     except KeyError as error:
