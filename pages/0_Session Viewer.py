@@ -257,6 +257,7 @@ def displayRacePosChange(sessionDetails):
     fastf1.plotting.setup_mpl(misc_mpl_mods=False)
 
     fig, ax = plt.subplots(figsize=(8.0, 4.9))
+    exception_occurred = False  # Flag to track if any exception occurred
     for drv in sessionDetails.drivers:
         drv_laps = sessionDetails.laps.pick_driver(drv)
 
@@ -270,6 +271,10 @@ def displayRacePosChange(sessionDetails):
             ax.plot(drv_laps['LapNumber'], drv_laps['Position'], label=abb, color=color)
         except Exception as e:
             print(f"Error processing data for Driver No. {drv}: {e}")
+            exception_occurred = True  # Set the flag to indicate an exception
+
+    if exception_occurred:
+        st.info('Some data might be missing or unavailable.', icon="ℹ️")
     
     ax.set_ylim([20.5, 0.5])
     ax.set_yticks([1, 5, 10, 15, 20])
