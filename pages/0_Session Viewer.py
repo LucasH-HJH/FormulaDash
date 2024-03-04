@@ -1,13 +1,16 @@
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib import colormaps
 from matplotlib.collections import LineCollection
+import seaborn as sns
 import pandas as pd
 import datetime
 import time
 from timple.timedelta import strftimedelta
 import streamlit as st
 import fastf1
+import fastf1.plotting
 
 def getSeason(year):
     season = fastf1.get_event_schedule(year)
@@ -164,6 +167,7 @@ def displayCircuitMap(sessionDetails):
     plt.yticks([])
     plt.axis('equal')
     st.pyplot(plt)
+    plt.close()
 
 def displayCircuitMapSpeedVis(sessionDetails):
     lap = sessionDetails.laps.pick_fastest()
@@ -217,7 +221,101 @@ def displayCircuitMapSpeedVis(sessionDetails):
     normlegend = mpl.colors.Normalize(vmin=color.min(), vmax=color.max())
     legend = mpl.colorbar.ColorbarBase(cbaxes, norm=normlegend, cmap=colormap, orientation="horizontal")
     st.pyplot(plt)
+    plt.close()
 
+def displayCircuitGearVis(sessionDetails):
+    lap = sessionDetails.laps.pick_fastest()
+    tel = lap.get_telemetry()
+
+    x = np.array(tel['X'].values)
+    y = np.array(tel['Y'].values)
+
+    points = np.array([x, y]).T.reshape(-1, 1, 2)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+    gear = tel['nGear'].to_numpy().astype(float)
+
+    cmap = colormaps['Paired']
+    lc_comp = LineCollection(segments, norm=plt.Normalize(1, cmap.N+1), cmap=cmap)
+    lc_comp.set_array(gear)
+    lc_comp.set_linewidth(4)
+
+    plt.gca().add_collection(lc_comp)
+    plt.axis('equal')
+    plt.tick_params(labelleft=False, left=False, labelbottom=False, bottom=False)
+
+    title = plt.suptitle(
+        f"Fastest Lap Gear Shift Visualization\n"
+        f"{lap['Driver']} - {sessionDetails.event['EventName']} {sessionDetails.event.year}"
+    )
+
+    cbar = plt.colorbar(mappable=lc_comp, label="Gear",boundaries=np.arange(1, 10))
+    cbar.set_ticks(np.arange(1.5, 9.5))
+    cbar.set_ticklabels(np.arange(1, 9))
+    st.pyplot(plt)
+    plt.close()
+
+def displayRacePosChange(sessionDetails):
+    fastf1.plotting.setup_mpl(misc_mpl_mods=False)
+
+    fig, ax = plt.subplots(figsize=(8.0, 4.9))
+    
+    for drv in sessionDetails.drivers:
+        drv_laps = sessionDetails.laps.pick_driver(drv)
+        abb = drv_laps['Driver'].iloc[0]
+        color = fastf1.plotting.driver_color(abb)
+        ax.plot(drv_laps['LapNumber'], drv_laps['Position'],label=abb, color=color)
+    
+    ax.set_ylim([20.5, 0.5])
+    ax.set_yticks([1, 5, 10, 15, 20])
+    ax.set_xlabel('Lap')
+    ax.set_ylabel('Position')
+
+    ax.legend(bbox_to_anchor=(1.0, 1.02))
+    plt.tight_layout()
+    st.pyplot(plt)
+    plt.close()
+
+def displayRaceTyreStrategies(sessionDetails):
+    laps = sessionDetails.laps
+    drivers = sessionDetails.drivers
+    drivers = [sessionDetails.get_driver(driver)["Abbreviation"] for driver in drivers]
+    stints = laps[["Driver", "Stint", "Compound", "LapNumber"]]
+    stints = stints.groupby(["Driver", "Stint", "Compound"])
+    stints = stints.count().reset_index()
+    stints = stints.rename(columns={"LapNumber": "StintLength"})
+    fig, ax = plt.subplots(figsize=(5, 10))
+
+    for driver in drivers:
+        driver_stints = stints.loc[stints["Driver"] == driver]
+
+        previous_stint_end = 0
+        for idx, row in driver_stints.iterrows():
+            # each row contains the compound name and stint length
+            # we can use these information to draw horizontal bars
+            plt.barh(
+                y=driver,
+                width=row["StintLength"],
+                left=previous_stint_end,
+                color=fastf1.plotting.COMPOUND_COLORS[row["Compound"]],
+                edgecolor="black",
+                fill=True
+            )
+
+            previous_stint_end += row["StintLength"]
+
+    plt.title(f"{sessionDetails.event.year} {sessionDetails.event['EventName']} Tyre Strategy")
+    plt.xlabel("Lap Number")
+    plt.grid(False)
+    # invert the y-axis so drivers that finish higher are closer to the top
+    ax.invert_yaxis()
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+
+    plt.tight_layout()
+    st.pyplot(plt)
+    plt.close()
 
 def run():
     col1, col2, col3 = st.columns(3)
@@ -298,43 +396,65 @@ def run():
                     elif selectedSession == "Race":
                         sessionDateTime = sessionTimings[4]
 
-                st.divider()
-                st.header("Session Results")
-                st.write(selectedSession," results for the ", selectedSeason, selectedEvent, "(",sessionDateTime.strftime('%a %-d %b %Y %H:%M:%S, %Z'),")")
+                with st.expander("Session Results"):
+                    st.header("Session Results")
+                    st.write(selectedSession," results for the ", selectedSeason, selectedEvent, "(",sessionDateTime.strftime('%a %-d %b %Y %H:%M:%S, %Z'),")")
+                    
+                    if selectedSession in ["Practice 1","Practice 2","Practice 3"]:
+                        st.info('Practice sessions do not include times.', icon="ℹ️")
+                    elif selectedSession in ["Race","Sprint"]:
+                        st.info('Times after the first row is the gap from the session leader.', icon="ℹ️")
+                    #Session Results
+                    df = displaySessionDetails(sessionDetails, selectedSession)
                 
-                if selectedSession in ["Practice 1","Practice 2","Practice 3"]:
-                    st.info('Practice sessions do not include times.', icon="ℹ️")
-                elif selectedSession in ["Race","Sprint"]:
-                    st.info('Times after the first row is the gap from the session leader.', icon="ℹ️")
+                with st.expander("Circuit Overview"):
+                    st.header("Circuit Overview")
+                    st.write("Circuit related information for the ",selectedSession, " session")
+                    circuitTab1, circuitTab2, circuitTab3 = st.tabs(["Circuit Map", "Speed Visualization", "Gear Changes"])
+                    #Circuit Map
+                    with circuitTab1:
+                        displayCircuitMap(sessionDetails)
+                    #Speed Visualization
+                    with circuitTab2:
+                        displayCircuitMapSpeedVis(sessionDetails)
+                    #Gear Shift Visualization
+                    with circuitTab3:
+                        displayCircuitGearVis(sessionDetails)
 
-                #Session Results
-                df = displaySessionDetails(sessionDetails, selectedSession)
-                
-                st.divider()
-                st.header("Circuit Overview")
-                #Circuit Overview
-                circuitTab1, circuitTab2 = st.tabs(["Circuit Map", "Fastest Lap (km/h)"])
-                
-                #Circuit Map
-                with circuitTab1:
-                    displayCircuitMap(sessionDetails)
+                if selectedSession in ["Race","Sprint"]:
+                    with st.expander("Race Overview"):
+                        st.header("Race Overview")
+                        st.write(f"{selectedSession} related information for the ",selectedEvent)
 
-                #Speed Visualization
-                with circuitTab2:
-                    displayCircuitMapSpeedVis(sessionDetails)
+                        raceTab1, raceTab2= st.tabs(["Position Changes", "Tyre Strategies"])
+                        #Position Changes
+                        with raceTab1:
+                            displayRacePosChange(sessionDetails)
 
-                #Sidebar for Anchor links
-                st.sidebar.markdown('''
-                # Jump to
-                - [Session Results](#session-results)
-                - [Circuit Overview](#circuit-overview)
-                ''', unsafe_allow_html=True)
+                        with raceTab2:
+                            displayRaceTyreStrategies(sessionDetails)
 
-    except KeyError as error:
+                if selectedSession in ["Race","Sprint"]:
+                    #Sidebar for Anchor links
+                    st.sidebar.markdown('''
+                    # Jump to
+                    - [Session Results](#session-results)
+                    - [Circuit Overview](#circuit-overview)
+                    - [Race Overview](#race-overview)
+                    ''', unsafe_allow_html=True)
+                else:
+                    #Sidebar for Anchor links
+                    st.sidebar.markdown('''
+                    # Jump to
+                    - [Session Results](#session-results)
+                    - [Circuit Overview](#circuit-overview)
+                    ''', unsafe_allow_html=True)
+
+    except Exception as error:
         print("An exception occurred:", error)
         st.error("Information is not available yet or does not exist.")
 
-st.set_page_config(page_title="Session Viewer", page_icon="📹", layout="wide")
+st.set_page_config(page_title="Session Viewer", page_icon="🏁", layout="wide")
 st.markdown("# Session Viewer")
 st.write("""View specific session details here by selecting the Season, Event, and Session.""")
 
