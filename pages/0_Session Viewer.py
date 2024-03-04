@@ -260,12 +260,17 @@ def displayRacePosChange(sessionDetails):
     fig, ax = plt.subplots(figsize=(8.0, 4.9))
     for drv in sessionDetails.drivers:
         drv_laps = sessionDetails.laps.pick_driver(drv)
-        if len(drv_laps) > 0:
+
+        if len(drv_laps) == 0 or 'LapNumber' not in drv_laps.columns:
+            print(f"Incomplete data for Driver No. {drv}")
+            continue  # Skip to the next driver
+
+        try:
             abb = drv_laps['Driver'].iloc[0]
             color = fastf1.plotting.driver_color(abb)
-            ax.plot(drv_laps['LapNumber'], drv_laps['Position'],label=abb, color=color)
-        else:
-            print(f"Data for Driver No. {drv} is not available")
+            ax.plot(drv_laps['LapNumber'], drv_laps['Position'], label=abb, color=color)
+        except Exception as e:
+            print(f"Error processing data for Driver No. {drv}: {e}")
     
     ax.set_ylim([20.5, 0.5])
     ax.set_yticks([1, 5, 10, 15, 20])
