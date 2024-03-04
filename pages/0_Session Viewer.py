@@ -157,7 +157,7 @@ def displayCircuitInfo(sessionDetails):
         plt.text(text_x, text_y, txt,
                 va='center_baseline', ha='center', size='small', color='white')
 
-    plt.title(sessionDetails.event['Location'])
+    plt.title(sessionDetails.event['Location'] + ", " + sessionDetails.event['Country'])
     plt.xticks([])
     plt.yticks([])
     plt.axis('equal')
@@ -244,7 +244,7 @@ def run():
                         sessionDateTime = sessionTimings[4]
 
                 st.divider()
-                st.subheader("Session Results")
+                st.header("Session Results")
                 st.write(selectedSession," results for the ", selectedSeason, selectedEvent, "(",sessionDateTime.strftime('%a %-d %b %Y %H:%M:%S, %Z'),")")
                 
                 if selectedSession in ["Practice 1","Practice 2","Practice 3"]:
@@ -254,11 +254,19 @@ def run():
 
                 #Session Results
                 df = displaySessionDetails(sessionDetails, selectedSession)
+                
                 st.divider()
-                st.subheader("Circuit Overview")
-                #Circuit Info
+                st.header("Circuit Overview")
+                #Circuit Overview
                 displayCircuitInfo(sessionDetails)
-    
+
+                #Sidebar for Anchor links
+                st.sidebar.markdown('''
+                # Jump to
+                - [Session Results](#session-results)
+                - [Circuit Overview](#circuit-overview)
+                ''', unsafe_allow_html=True)
+
     except KeyError as error:
         print("An exception occurred:", error)
         st.error("Information is not available yet or does not exist.")
