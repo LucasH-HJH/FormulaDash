@@ -258,12 +258,14 @@ def displayRacePosChange(sessionDetails):
     fastf1.plotting.setup_mpl(misc_mpl_mods=False)
 
     fig, ax = plt.subplots(figsize=(8.0, 4.9))
-    
     for drv in sessionDetails.drivers:
         drv_laps = sessionDetails.laps.pick_driver(drv)
-        abb = drv_laps['Driver'].iloc[0]
-        color = fastf1.plotting.driver_color(abb)
-        ax.plot(drv_laps['LapNumber'], drv_laps['Position'],label=abb, color=color)
+        if len(drv_laps) > 0:
+            abb = drv_laps['Driver'].iloc[0]
+            color = fastf1.plotting.driver_color(abb)
+            ax.plot(drv_laps['LapNumber'], drv_laps['Position'],label=abb, color=color)
+        else:
+            print(f"Data for Driver No. {drv} is not available")
     
     ax.set_ylim([20.5, 0.5])
     ax.set_yticks([1, 5, 10, 15, 20])
@@ -271,6 +273,7 @@ def displayRacePosChange(sessionDetails):
     ax.set_ylabel('Position')
 
     ax.legend(bbox_to_anchor=(1.0, 1.02))
+    plt.title(f"{sessionDetails.event.year} {sessionDetails.event['EventName']} Position Changes")
     plt.tight_layout()
     st.pyplot(plt)
     plt.close()
