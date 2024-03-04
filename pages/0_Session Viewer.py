@@ -60,7 +60,6 @@ def displaySessionDetails(sessionDetails, sessionName):
         df["Q2"] = df["Q2"].apply(lambda x: strftimedelta(x, '%m:%s.%ms'))
         df["Q3"] = df["Q3"].fillna(pd.Timedelta(seconds=0))  # Replace NaNs with 0
         df["Q3"] = df["Q3"].apply(lambda x: strftimedelta(x, '%m:%s.%ms'))
-    
     except KeyError:
         print("No Time")
 
@@ -291,7 +290,7 @@ def displayRaceTyreStrategies(sessionDetails):
     stints = stints.groupby(["Driver", "Stint", "Compound"])
     stints = stints.count().reset_index()
     stints = stints.rename(columns={"LapNumber": "StintLength"})
-    fig, ax = plt.subplots(figsize=(5, 10))
+    fig, ax = plt.subplots(figsize=(10, 10))
 
     for driver in drivers:
         driver_stints = stints.loc[stints["Driver"] == driver]
@@ -311,6 +310,10 @@ def displayRaceTyreStrategies(sessionDetails):
 
             previous_stint_end += row["StintLength"]
 
+    compound_names = list(fastf1.plotting.COMPOUND_COLORS.keys()) #get compounds
+    handles = [plt.Rectangle((0, 0), 1, 1, color=color) for color in fastf1.plotting.COMPOUND_COLORS.values()]
+
+    plt.legend(handles, compound_names, loc='center left', bbox_to_anchor=(1.05, 0.9))  # Adjust legend position as needed
     plt.title(f"{sessionDetails.event.year} {sessionDetails.event['EventName']} Tyre Strategy")
     plt.xlabel("Lap Number")
     plt.grid(False)
@@ -406,7 +409,8 @@ def run():
 
                 with st.expander("Session Results"):
                     st.header("Session Results")
-                    st.write(selectedSession," results for the ", selectedSeason, selectedEvent, "(",sessionDateTime.strftime('%a %-d %b %Y %H:%M:%S, %Z'),")")
+                    
+                    #st.write(selectedSession," results for the ", selectedSeason, selectedEvent, "(",sessionDateTime.strftime('%a %-d %b %Y %H:%M:%S, %Z'),")")
                     
                     if selectedSession in ["Practice 1","Practice 2","Practice 3"]:
                         st.info('Practice sessions do not include times.', icon="ℹ️")
@@ -417,7 +421,6 @@ def run():
                 
                 with st.expander("Circuit Overview"):
                     st.header("Circuit Overview")
-                    st.write("Circuit related information for the ",selectedSession, " session")
                     circuitTab1, circuitTab2, circuitTab3 = st.tabs(["Circuit Map", "Speed Visualization", "Gear Changes"])
                     #Circuit Map
                     with circuitTab1:
@@ -432,8 +435,6 @@ def run():
                 if selectedSession in ["Race","Sprint"]:
                     with st.expander("Race Overview"):
                         st.header("Race Overview")
-                        st.write(f"{selectedSession} related information for the ",selectedEvent)
-
                         raceTab1, raceTab2= st.tabs(["Position Changes", "Tyre Strategies"])
                         #Position Changes
                         with raceTab1:
