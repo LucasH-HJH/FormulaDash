@@ -106,7 +106,7 @@ def displaySessionDetails(sessionDetails, sessionName):
                 "Grid Pos.",
             ),
             "Time": st.column_config.TextColumn(
-                "Time"
+                "Time Delta"
             ),
         },
         disabled=True,
@@ -470,13 +470,13 @@ def run():
     eventName=""
     sessionName=""
 
-    seasonsSince2018 = range(datetime.datetime(2018,1,1).year, datetime.datetime.now().year+1)
-    seasonsSince2018 = reversed(seasonsSince2018)
+    seasonsSince2021 = range(datetime.datetime(2021,1,1).year, datetime.datetime.now().year+1)
+    seasonsSince2021 = reversed(seasonsSince2021)
 
     with col1:
         selectedSeason = st.selectbox(
         "Season",
-        (seasonsSince2018),
+        (seasonsSince2021),
         index=None,
         placeholder="Select Season",
         )
