@@ -11,6 +11,7 @@ from timple.timedelta import strftimedelta
 import streamlit as st
 import fastf1
 import fastf1.plotting
+from fastf1.core import Laps
 
 def getSeason(year):
     season = fastf1.get_event_schedule(year)
@@ -44,6 +45,12 @@ def getSessionTimings(event):
 def getSessionDetails(year,event,session):
     sessionDetails = fastf1.get_session(year, event, session)
     sessionDetails.load()
+    return sessionDetails
+
+def getTestingSessionDetails(year,event,session):
+    sessionDetails = fastf1.get_testing_session(year, event, session)
+    sessionDetails.load()
+    print(sessionDetails)
     return sessionDetails
 
 def displaySessionDetails(sessionDetails, sessionName):
@@ -222,6 +229,45 @@ def displayCircuitMapSpeedVis(sessionDetails):
     st.pyplot(plt)
     plt.close()
 
+def displaySpeedTraceGraph(sessionDetails):
+    fastf1.plotting.setup_mpl(misc_mpl_mods=False)
+    fastest_lap = sessionDetails.laps.pick_fastest()
+    car_data = fastest_lap.get_car_data().add_distance()
+    circuit_info = sessionDetails.get_circuit_info()
+
+    team_color = fastf1.plotting.team_color(fastest_lap['Team'])
+
+    fig, ax = plt.subplots()
+    ax.plot(car_data['Distance'], car_data['Speed'],
+            color=team_color, label=fastest_lap['Driver'])
+
+    # Draw vertical dotted lines at each corner that range from slightly below the
+    # minimum speed to slightly above the maximum speed.
+    v_min = car_data['Speed'].min()
+    v_max = car_data['Speed'].max()
+    ax.vlines(x=circuit_info.corners['Distance'], ymin=v_min-20, ymax=v_max+20,
+            linestyles='dotted', colors='grey')
+
+    # Plot the corner number just below each vertical line.
+    # For corners that are very close together, the text may overlap. A more
+    # complicated approach would be necessary to reliably prevent this.
+    for _, corner in circuit_info.corners.iterrows():
+        txt = f"{corner['Number']}{corner['Letter']}"
+        ax.text(corner['Distance'], v_min-30, txt,
+                va='center_baseline', ha='center', size='small')
+
+    ax.set_xlabel('Distance in m')
+    ax.set_ylabel('Speed in km/h')
+    ax.legend()
+
+    # Manually adjust the y-axis limits to include the corner numbers, because
+    # Matplotlib does not automatically account for text that was manually added.
+    ax.set_ylim([v_min - 40, v_max + 20])
+
+    plt.title(f"{fastest_lap['Driver']} Fastest Lap - Lap {int(fastest_lap['LapNumber'])}")
+    st.pyplot(plt)
+    plt.close()
+
 def displayCircuitGearVis(sessionDetails):
     lap = sessionDetails.laps.pick_fastest()
     tel = lap.get_telemetry()
@@ -333,6 +379,85 @@ def displayRaceTyreStrategies(sessionDetails):
     st.pyplot(plt)
     plt.close()
 
+def displayTeamPaceComparison(sessionDetails):
+    laps = sessionDetails.laps.pick_quicklaps()
+
+    transformed_laps = laps.copy()
+    transformed_laps.loc[:, "LapTime (s)"] = laps["LapTime"].dt.total_seconds()
+
+    # order the team from the fastest (lowest median lap time) tp slower
+    team_order = (
+        transformed_laps[["Team", "LapTime (s)"]]
+        .groupby("Team")
+        .median()["LapTime (s)"]
+        .sort_values()
+        .index
+    )
+
+    # make a color palette associating team names to hex codes
+    team_palette = {team: fastf1.plotting.team_color(team) for team in team_order}
+
+    fig, ax = plt.subplots(figsize=(15, 10))
+    sns.boxplot(
+        data=transformed_laps,
+        x="Team",
+        y="LapTime (s)",
+        hue="Team",
+        order=team_order,
+        palette=team_palette,
+        whiskerprops=dict(color="white"),
+        boxprops=dict(edgecolor="white"),
+        medianprops=dict(color="grey"),
+        capprops=dict(color="white"),
+    )
+
+    plt.title(f"Team Race Pace Comparison - {sessionDetails.event.year} {sessionDetails.event['EventName']}")
+    plt.grid(visible=False)
+
+    # x-label is redundant
+    ax.set(xlabel=None)
+    plt.tight_layout()
+    st.pyplot(plt)
+    plt.close()
+
+def displayQualiResults(sessionDetails):
+    fastf1.plotting.setup_mpl(mpl_timedelta_support=True, color_scheme=None,misc_mpl_mods=False)
+    drivers = pd.unique(sessionDetails.laps['Driver'])
+    list_fastest_laps = list()
+    for drv in drivers:
+        drvs_fastest_lap = sessionDetails.laps.pick_driver(drv).pick_fastest()
+        list_fastest_laps.append(drvs_fastest_lap)
+    fastest_laps = Laps(list_fastest_laps) \
+        .sort_values(by='LapTime') \
+        .reset_index(drop=True)
+
+    pole_lap = fastest_laps.pick_fastest()
+    fastest_laps['LapTimeDelta'] = fastest_laps['LapTime'] - pole_lap['LapTime']
+
+    team_colors = list()
+    for index, lap in fastest_laps.iterlaps():
+        color = fastf1.plotting.team_color(lap['Team'])
+        team_colors.append(color)
+
+    fig, ax = plt.subplots()
+    ax.barh(fastest_laps.index, fastest_laps['LapTimeDelta'],color=team_colors, edgecolor='grey')
+    ax.set_yticks(fastest_laps.index)
+    ax.set_yticklabels(fastest_laps['Driver'])
+
+    # show fastest at the top
+    ax.invert_yaxis()
+
+    # draw vertical lines behind the bars
+    ax.set_axisbelow(True)
+    ax.xaxis.grid(True, which='major', linestyle='--', color='black', zorder=-1000)
+
+    lap_time_string = strftimedelta(pole_lap['LapTime'], '%m:%s.%ms')
+
+    plt.suptitle(f"{sessionDetails.event['EventName']} {sessionDetails.event.year} Qualifying\n"f"Fastest Lap: {lap_time_string} ({pole_lap['Driver']})")
+
+    st.pyplot(plt)
+    plt.close()
+
 def run():
     col1, col2, col3 = st.columns(3)
     events = []
@@ -345,10 +470,13 @@ def run():
     eventName=""
     sessionName=""
 
+    seasonsSince2018 = range(datetime.datetime(2018,1,1).year, datetime.datetime.now().year+1)
+    seasonsSince2018 = reversed(seasonsSince2018)
+
     with col1:
         selectedSeason = st.selectbox(
         "Season",
-        ("2024", "2023", "2022", "2021"),
+        (seasonsSince2018),
         index=None,
         placeholder="Select Season",
         )
@@ -385,8 +513,20 @@ def run():
         if selectedSeason and selectedEvent and selectedSession != None:
             with st.spinner('Fetching data...'):
 
-                sessionDetails = getSessionDetails(int(selectedSeason),selectedEvent,selectedSession)
-
+                if selectedEvent == "Pre-Season Testing":
+                    
+                    testSessionNo = 0        
+                    if selectedSession == "Practice 1":
+                        testSessionNo = 1
+                    elif selectedSession == "Practice 2":
+                        testSessionNo = 2
+                    else:
+                        testSessionNo = 3
+                    sessionDetails = getTestingSessionDetails(int(selectedSeason),1,testSessionNo)
+                
+                else:
+                    sessionDetails = getSessionDetails(int(selectedSeason),selectedEvent,selectedSession)
+                
                 sessionDateTime = ""
                 
                 if eventFormat == "sprint_shootout":
@@ -417,7 +557,9 @@ def run():
                     
                     #st.write(selectedSession," results for the ", selectedSeason, selectedEvent, "(",sessionDateTime.strftime('%a %-d %b %Y %H:%M:%S, %Z'),")")
                     
-                    if selectedSession in ["Practice 1","Practice 2","Practice 3"]:
+                    if selectedEvent == "Pre-Season Testing":
+                        st.info('Pre-Season Testing data is not in order of fastest times.', icon="ℹ️")
+                    elif selectedSession in ["Practice 1","Practice 2","Practice 3"]:
                         st.info('Practice sessions do not include times.', icon="ℹ️")
                     elif selectedSession in ["Race","Sprint"]:
                         st.info('Times after the first row is the gap from the session leader.', icon="ℹ️")
@@ -426,27 +568,38 @@ def run():
                 
                 with st.expander("Circuit Overview"):
                     st.header("Circuit Overview")
-                    circuitTab1, circuitTab2, circuitTab3 = st.tabs(["Circuit Map", "Speed Visualization", "Gear Changes"])
+                    circuitTab1, circuitTab2, circuitTab3, circuitTab4 = st.tabs(["Circuit Map", "Speed Heat Map", "Speed Graph", "Gear Changes"])
                     #Circuit Map
                     with circuitTab1:
                         displayCircuitMap(sessionDetails)
                     #Speed Visualization
                     with circuitTab2:
                         displayCircuitMapSpeedVis(sessionDetails)
-                    #Gear Shift Visualization
+                    #Speed Grapj
                     with circuitTab3:
+                        displaySpeedTraceGraph(sessionDetails)
+                    #Gear Shift Visualization
+                    with circuitTab4:
                         displayCircuitGearVis(sessionDetails)
 
-                if selectedSession in ["Race","Sprint"]:
+                if selectedSession in ["Race"]: #disallowed Sprint cause of data diff issues
                     with st.expander("Race Overview"):
                         st.header("Race Overview")
-                        raceTab1, raceTab2= st.tabs(["Position Changes", "Tyre Strategies"])
+                        raceTab1, raceTab2, raceTab3 = st.tabs(["Position Changes", "Tyre Strategies", "Team Pace"])
                         #Position Changes
                         with raceTab1:
                             displayRacePosChange(sessionDetails)
-
+                        #Tyre Strategies
                         with raceTab2:
                             displayRaceTyreStrategies(sessionDetails)
+                        #Team Race Pace Comparison
+                        with raceTab3:
+                            displayTeamPaceComparison(sessionDetails)
+
+                if selectedSession in ["Qualifying"]: #disallowed Sprint Shootout cause of data diff issues
+                    with st.expander("Qualifying Overview"):
+                        st.header("Qualifying Overview")
+                        displayQualiResults(sessionDetails)
 
                 if selectedSession in ["Race","Sprint"]:
                     #Sidebar for Anchor links
@@ -455,6 +608,14 @@ def run():
                     - [Session Results](#session-results)
                     - [Circuit Overview](#circuit-overview)
                     - [Race Overview](#race-overview)
+                    ''', unsafe_allow_html=True)
+                elif selectedSession == "Qualifying":
+                    #Sidebar for Anchor links
+                    st.sidebar.markdown('''
+                    # Jump to
+                    - [Session Results](#session-results)
+                    - [Circuit Overview](#circuit-overview)
+                    - [Qualifying Overview](#qualifying-overview)
                     ''', unsafe_allow_html=True)
                 else:
                     #Sidebar for Anchor links
@@ -468,7 +629,7 @@ def run():
         print("An exception occurred:", error)
         st.error("Information is not available yet or does not exist.")
 
-st.set_page_config(page_title="Session Viewer", page_icon="🏁", layout="wide")
+st.set_page_config(page_title="Session Viewer", page_icon="🏁")
 st.markdown("# Session Viewer")
 st.write("""View specific session details here by selecting the Season, Event, and Session.""")
 
