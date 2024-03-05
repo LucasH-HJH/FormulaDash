@@ -30,28 +30,33 @@ def getSessions(event):
         eventsSessionsList.remove("None")
     return eventsSessionsList
 
-def getSessionTimings(event):
-    sessionTimingsList = []
-    sessionTimingsList.append(event["Session1Date"])
-    sessionTimingsList.append(event["Session2Date"])
-    sessionTimingsList.append(event["Session3Date"])
-    sessionTimingsList.append(event["Session4Date"])
-    sessionTimingsList.append(event["Session5Date"])
+def getSessionDetails(year,event,session):
+    sessionDetails = fastf1.get_session(year, event, session)
+    sessionDetails.load()
+    return sessionDetails
 
-    while("None" in sessionTimingsList):
-        sessionTimingsList.remove("None")
-    return sessionTimingsList
+def getDriversInSession(sessionDetails):
+    driverList = []
+    for driver in sessionDetails.results.FullName:
+        driverList.append(driver)
+    return driverList
 
 def run():
-    col1,col2 = st.columns(2)
-    events = []
-    eventList = []
-    session = "Qualifying"
-    sessionTimings=[]
+    events1 = []
+    events2 = []
+    eventList1 = []
+    eventList2 = []
+
+    sessionName = "Qualifying"
+
+    driverList1 = []
+    driverList2 = []
+
+    selectedDriver1=""
+    selectedDriver2=""
 
     year=0
     eventName=""
-    sessionName=""
 
     seasonsSince2021 = range(datetime.datetime(2021,1,1).year, datetime.datetime.now().year+1)
     seasonsSince2021 = reversed(seasonsSince2021)
@@ -59,10 +64,12 @@ def run():
     List2seasonsSince2021 = range(datetime.datetime(2021,1,1).year, datetime.datetime.now().year+1)
     List2seasonsSince2021 = reversed(List2seasonsSince2021)
 
+    st.subheader("Seasons to compare")
+    col1,col2 = st.columns(2)
+    
     with col1:
-        st.subheader("Comparison Lap #1")
         selectedSeason1 = st.selectbox(
-        "Season",
+        "Season #1",
         (seasonsSince2021),
         index=None,
         key="ALPHA",
@@ -70,37 +77,79 @@ def run():
         )
 
     with col2:
-        st.subheader("Comparison Lap #2")
         selectedSeason2 = st.selectbox(
-        "Season",
+        "Season #2",
         (List2seasonsSince2021),
         index=None,
         key="BRAVO",
         placeholder="Select Season",
         )
 
-    if selectedSeason1 != None:
-        events = getSeason(int(selectedSeason1))
-        for event in events:
+    if selectedSeason1 and selectedSeason2 != None:
+        events1 = getSeason(int(selectedSeason1))
+        events2 = getSeason(int(selectedSeason2))
+        
+        for event in events1:
             if event["EventName"] in ["Pre-Season Testing","Pre-Season Track Session","Pre-Season Test"]:
                 continue
             else:
-                eventList.append((event["EventName"]))
+                if pd.Timestamp.today() < event["EventDate"]:
+                    continue
+                else:
+                    eventList1.append((event["EventName"]))
+        
+        for event in events2:
+            if event["EventName"] in ["Pre-Season Testing","Pre-Season Track Session","Pre-Season Test"]:
+                continue
+            else:
+                if pd.Timestamp.today() < event["EventDate"]:
+                    continue
+                else:
+                    eventList2.append((event["EventName"]))
 
-        st.subheader("Event To Compare")
+        eventSet1 = set(eventList1)
+        eventSet2 = set(eventList2)
+        matchingEventsList = list(eventSet1.intersection(eventSet2))
+
+        st.divider()
+        st.subheader("Event to compare")
         selectedEvent = st.selectbox(
         "Event",
-        (eventList),
+        (matchingEventsList),
         index=None,
         placeholder="Select Event",
         )
 
         if selectedEvent != None:
-            for event in events:
-                if event["EventName"] == selectedEvent:
-                    sessions = getSessions(event)
-                    sessionTimings = getSessionTimings(event)
-                    eventFormat = event["EventFormat"]
+            with st.spinner('Fetching data...'):
+                sessionDetails1 = getSessionDetails(int(selectedSeason1),selectedEvent,sessionName)
+                sessionDetails2 = getSessionDetails(int(selectedSeason2),selectedEvent,sessionName)
+
+                driverList1 = getDriversInSession(sessionDetails1)
+                driverList2 = getDriversInSession(sessionDetails2)
+
+                st.divider()
+                st.subheader("Drivers to compare")
+                col1,col2 = st.columns(2)
+                with col1:
+                    selectedDriver1 = st.selectbox(
+                    "Driver #1",
+                    (driverList1),
+                    index=None,
+                    placeholder="Select Driver",
+                    )
+
+                with col2:
+                    selectedDriver2 = st.selectbox(
+                    "Driver #2",
+                    (driverList2),
+                    index=None,
+                    placeholder="Select Driver",
+                    )
+
+        if selectedDriver1 and selectedDriver2 != None:
+            print("YAY")
+            #continue from here
         
 
 st.set_page_config(page_title="Quali Lap Comparison", page_icon="⏱️")
