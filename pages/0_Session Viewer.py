@@ -629,7 +629,7 @@ def run():
         print("An exception occurred:", error)
         st.error("Information is not available yet or does not exist.")
 
-st.set_page_config(page_title="Session Viewer", page_icon="🏁")
+st.set_page_config(page_title="Session Viewer - Formula Dash", page_icon="🏁")
 st.markdown("# Session Viewer")
 st.write("""View specific session details here by selecting the Season, Event, and Session.""")
 
