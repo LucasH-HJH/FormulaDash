@@ -36,10 +36,60 @@ def getSessionDetails(year,event,session):
     return sessionDetails
 
 def getDriversInSession(sessionDetails):
-    driverList = []
-    for driver in sessionDetails.results.FullName:
-        driverList.append(driver)
+    driverList = {}
+    for driver in sessionDetails.results.Abbreviation:
+        driverList.update({(sessionDetails.get_driver(driver).FullName) : driver})
     return driverList
+
+def displayQualiLapComparison(sessionDetails1, driverDict1, selectedDriver1, sessionDetails2, driverDict2, selectedDriver2):
+    fastf1.plotting.setup_mpl(misc_mpl_mods=False)
+
+    selectedDriverAbbrv1 = ""
+    selectedDriverAbbrv2 = ""
+
+    circuit_info = sessionDetails1.get_circuit_info()
+
+    for name, abbrv in driverDict1.items():
+        if name == selectedDriver1:
+            selectedDriverAbbrv1 = abbrv
+
+    for name, abbrv in driverDict2.items():
+        if name == selectedDriver2:
+            selectedDriverAbbrv2 = abbrv
+
+    driverLap1 = sessionDetails1.laps.pick_drivers(selectedDriverAbbrv1).pick_fastest()
+    driverLap2 = sessionDetails2.laps.pick_drivers(selectedDriverAbbrv2).pick_fastest()
+
+    driverTel1 = driverLap1.get_car_data().add_distance()
+    driverTel2 = driverLap2.get_car_data().add_distance()
+
+    driver1Color = fastf1.plotting.driver_color(selectedDriverAbbrv1)
+    driver2Color = fastf1.plotting.driver_color(selectedDriverAbbrv2)
+
+    fig, ax = plt.subplots()
+    ax.plot(driverTel1['Distance'], driverTel1['Speed'], color=driver1Color, label=selectedDriverAbbrv1)
+    ax.plot(driverTel2['Distance'], driverTel2['Speed'], color=driver2Color, label=selectedDriverAbbrv2)
+
+    ax.set_xlabel('Distance in m')
+    ax.set_ylabel('Speed in km/h')
+
+    v_min = driverTel1['Speed'].min()
+    v_max = driverTel1['Speed'].max()
+    ax.vlines(x=circuit_info.corners['Distance'], ymin=v_min-20, ymax=v_max+20,
+            linestyles='dotted', colors='grey')
+
+    for _, corner in circuit_info.corners.iterrows():
+        txt = f"{corner['Number']}{corner['Letter']}"
+        ax.text(corner['Distance'], v_min-30, txt,
+            va='center_baseline', ha='center', size='small')
+
+    ax.legend()
+    if sessionDetails1.event["EventDate"] != sessionDetails2.event["EventDate"]:
+        plt.suptitle(f"Fastest Quali Lap Comparison \n "f"{sessionDetails1.event['EventName']} {sessionDetails1.event.year} VS "f"{sessionDetails2.event['EventName']} {sessionDetails2.event.year}")
+    else:
+        plt.suptitle(f"Fastest Quali Lap Comparison \n "f"{sessionDetails1.event['EventName']} {sessionDetails1.event.year}")
+    st.pyplot(plt)
+    plt.close()
 
 def run():
     events1 = []
@@ -125,8 +175,8 @@ def run():
                 sessionDetails1 = getSessionDetails(int(selectedSeason1),selectedEvent,sessionName)
                 sessionDetails2 = getSessionDetails(int(selectedSeason2),selectedEvent,sessionName)
 
-                driverList1 = getDriversInSession(sessionDetails1)
-                driverList2 = getDriversInSession(sessionDetails2)
+                driverDict1 = getDriversInSession(sessionDetails1)
+                driverDict2 = getDriversInSession(sessionDetails2)
 
                 st.divider()
                 st.subheader("Drivers to compare")
@@ -134,7 +184,7 @@ def run():
                 with col1:
                     selectedDriver1 = st.selectbox(
                     "Driver #1",
-                    (driverList1),
+                    (driverDict1),
                     index=None,
                     placeholder="Select Driver",
                     )
@@ -142,14 +192,13 @@ def run():
                 with col2:
                     selectedDriver2 = st.selectbox(
                     "Driver #2",
-                    (driverList2),
+                    (driverDict2),
                     index=None,
                     placeholder="Select Driver",
                     )
 
         if selectedDriver1 and selectedDriver2 != None:
-            print("YAY")
-            #continue from here
+            displayQualiLapComparison(sessionDetails1, driverDict1, selectedDriver1, sessionDetails2, driverDict2, selectedDriver2)
         
 
 st.set_page_config(page_title="Quali Lap Comparison", page_icon="⏱️")
