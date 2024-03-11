@@ -69,10 +69,10 @@ def run():
           countryName = event["Country"]
         country = pyc.countries.lookup(countryName)
 
-        # if pd.to_datetime(event["EventDate"]) < datetime.datetime.today():
-        #   cardLabel = f"{event["OfficialEventName"]} {country.flag} - Completed"
-        # else:
-        cardLabel = f"{event["OfficialEventName"]}"
+        if pd.to_datetime(event["EventDate"]) < datetime.datetime.today():
+          cardLabel = event["OfficialEventName"] + " " + country.flag + " - Completed"
+        else:
+          cardLabel = event["OfficialEventName"] + " " + country.flag
         
         print(cardLabel)
         
