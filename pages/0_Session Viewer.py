@@ -424,9 +424,15 @@ def displayQualiResults(sessionDetails):
     fastf1.plotting.setup_mpl(mpl_timedelta_support=True, color_scheme=None,misc_mpl_mods=False)
     drivers = pd.unique(sessionDetails.laps['Driver'])
     list_fastest_laps = list()
+
+    print(sessionDetails.laps.pick_drivers("ZHO").pick_fastest())
     for drv in drivers:
         drvs_fastest_lap = sessionDetails.laps.pick_driver(drv).pick_fastest()
-        list_fastest_laps.append(drvs_fastest_lap)
+        if pd.isna(drvs_fastest_lap['LapTime']): #CHECK FOR NONE IN THE FUTURE
+            continue
+        else:
+            list_fastest_laps.append(drvs_fastest_lap)
+
     fastest_laps = Laps(list_fastest_laps) \
         .sort_values(by='LapTime') \
         .reset_index(drop=True)

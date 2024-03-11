@@ -8,8 +8,7 @@ LOGGER = get_logger(__name__)
 def run():
     st.set_page_config(
         page_title="Formula Dash",
-        page_icon="🏎️",
-        layout="wide"
+        page_icon="🏎️"
     )
 
     st.write("# Welcome to Formula Dash! 🏎️")
