@@ -67,8 +67,10 @@ def displayQualiLapComparison(sessionDetails1, driverDict1, selectedDriver1, ses
     driver2Color = fastf1.plotting.driver_color(selectedDriverAbbrv2)
 
     fig, ax = plt.subplots()
-    ax.plot(driverTel1['Distance'], driverTel1['Speed'], color=driver1Color, label=selectedDriverAbbrv1)
-    ax.plot(driverTel2['Distance'], driverTel2['Speed'], color=driver2Color, label=selectedDriverAbbrv2)
+    #ax.plot(driverTel1['Distance'], driverTel1['Speed'], color=driver1Color, label=selectedDriverAbbrv1)
+    #ax.plot(driverTel2['Distance'], driverTel2['Speed'], color=driver2Color, label=selectedDriverAbbrv2)
+    ax.plot(driverTel1['Distance'], driverTel1['Speed'], color="Yellow", label=selectedDriverAbbrv1)
+    ax.plot(driverTel2['Distance'], driverTel2['Speed'], color="Blue", label=selectedDriverAbbrv2)
 
     ax.set_xlabel('Distance in m')
     ax.set_ylabel('Speed in km/h')
