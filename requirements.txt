@@ -5,3 +5,4 @@ pydeck
 streamlit
 fastf1
 seaborn
+pycountry
