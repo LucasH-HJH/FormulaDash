@@ -6,3 +6,4 @@ streamlit
 fastf1
 seaborn
 pycountry
+geopy
