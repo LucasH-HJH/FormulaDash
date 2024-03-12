@@ -83,19 +83,19 @@ def run():
           ''')
 
           if pd.isna(event["Session1Date"]) is not True:       
-            st.markdown(f"**{event["Session1"]}:** {event["Session1Date"].strftime("%d %b %Y %H:%M %Z")}")
+            st.markdown(f'''**{event["Session1"]}:** {event["Session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
           if pd.isna(event["Session2Date"]) is not True:       
-            st.markdown(f"**{event["Session2"]}:** {event["Session2Date"].strftime("%d %b %Y %H:%M %Z")}")
+            st.markdown(f'''**{event["Session2"]}:** {event["Session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
           if pd.isna(event["Session3Date"]) is not True:       
-            st.markdown(f"**{event["Session3"]}:** {event["Session3Date"].strftime("%d %b %Y %H:%M %Z")}")
+            st.markdown(f'''**{event["Session3"]}:** {event["Session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
           if pd.isna(event["Session4Date"]) is not True:       
-            st.markdown(f"**{event["Session4"]}:** {event["Session4Date"].strftime("%d %b %Y %H:%M %Z")}")
+            st.markdown(f'''**{event["Session4"]}:** {event["Session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
           if pd.isna(event["Session5Date"]) is not True:       
-            st.markdown(f"**{event["Session5"]}:** {event["Session5Date"].strftime("%d %b %Y %H:%M %Z")}")
+            st.markdown(f'''**{event["Session5"]}:** {event["Session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
     
 st.set_page_config(
     page_title="Formula Dash",
