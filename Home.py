@@ -17,14 +17,18 @@ import streamlit as st
 import fastf1
 import fastf1.plotting
 from fastf1.core import Laps
+from fastf1.ergast import Ergast # Will be deprecated post 2024
+ergast = Ergast()
+# import wikipedia
+# import requests
+# import json
 from streamlit.logger import get_logger
-
 LOGGER = get_logger(__name__)
 
 def getSeason(year):
-    season = fastf1.get_event_schedule(year)
-    events = season.to_records(list)
-    return events
+  season = fastf1.get_event_schedule(year)
+  events = season.to_records(list)
+  return events
 
 def getCountryCoords(country):
   geolocator = Nominatim(user_agent="my_app")
@@ -36,71 +40,143 @@ def getCountryCoords(country):
       print(f"Coordinates not found for '{location_string}'.")
       return None
 
+def displaySeasonSchedule():
+  currentSeasonEvents = getSeason(datetime.datetime.now().year)
+  currentSeasonRaceSchedule = ergast.get_race_schedule(season=datetime.datetime.now().year)
+  currentSeasonCircuits = ergast.get_circuits(season=datetime.datetime.now().year)
+  sessionDetails = ""
+  countryData = []
+
+  with st.spinner('Fetching data...'):
+    # Display season schedule
+    for event in currentSeasonEvents:
+      cardLabel = ""
+      countryName = ""
+      circuitName = ""
+      circuitLat = ""
+      circuitLon = ""
+      circuitUrl = ""
+      circuitImage = ""
+      
+      # Standardize country name
+      if event["Country"] == "Great Britain":
+          countryName = "United Kingdom"
+      elif event["Country"] == "Abu Dhabi":
+        countryName = "United Arab Emirates"
+      else:
+        countryName = event["Country"]
+      country = pyc.countries.lookup(countryName)
+
+      # Get Ergast circuitId to cross-ref to get circuit info
+      for index, row in currentSeasonRaceSchedule.iterrows():
+        if row["raceName"] == event["EventName"]:
+          circuitId = row["circuitId"]
+          for index, row in currentSeasonCircuits.iterrows():
+            if circuitId == row["circuitId"]:
+              circuitName = row["circuitName"]
+              circuitLat = row["lat"]
+              circuitLon = row["long"]
+              circuitUrl = row["circuitUrl"]
+              break
+
+      # Check if race over
+      if pd.to_datetime(event["EventDate"]) < datetime.datetime.today():
+        cardLabel = event["OfficialEventName"] + " " + country.flag + " - Completed"
+      else:
+        cardLabel = event["OfficialEventName"] + " " + country.flag
+      
+      with st.expander(cardLabel):
+        st.markdown(f'''
+        **{country.flag} {event["EventName"]}** - Round {event["RoundNumber"]}\n
+        **Location:** {circuitName} - {event["Location"]}, {event["Country"]}\n
+        ''')
+
+        if pd.isna(event["Session1Date"]) is not True:       
+          st.markdown(f'''**{event["Session1"]}:** {event["Session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
+
+        if pd.isna(event["Session2Date"]) is not True:       
+          st.markdown(f'''**{event["Session2"]}:** {event["Session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
+
+        if pd.isna(event["Session3Date"]) is not True:       
+          st.markdown(f'''**{event["Session3"]}:** {event["Session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
+
+        if pd.isna(event["Session4Date"]) is not True:       
+          st.markdown(f'''**{event["Session4"]}:** {event["Session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
+
+        if pd.isna(event["Session5Date"]) is not True:       
+          st.markdown(f'''**{event["Session5"]}:** {event["Session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
+
+def displayWDCPrediction():
+  with st.spinner('Calculating...'):
+    # Get current standings after last race
+    ergast = Ergast()
+    lastRace = ergast.get_race_schedule(season='current', round='last')
+    currentRound = lastRace["round"].values[0]
+    driver_standings = ergast.get_driver_standings(season="current", round="last")
+    driver_standings =  driver_standings.content[0]
+
+    # Calculate max points for remaining season
+    POINTS_FOR_SPRINT = 8 + 25 + 1  # Winning the sprint, race and fastest lap
+    POINTS_FOR_CONVENTIONAL = 25 + 1  # Winning the race and fastest lap
+
+    events = fastf1.events.get_event_schedule(datetime.datetime.now().year, backend='ergast')
+    events = events[events['RoundNumber'] > currentRound]
+
+    # Count how many sprints and conventional races are left
+    sprint_events = len(events.loc[events["EventFormat"] == "sprint_shootout"])
+    conventional_events = len(events.loc[events["EventFormat"] == "conventional"])
+
+    # Calculate points for each
+    sprint_points = sprint_events * POINTS_FOR_SPRINT
+    conventional_points = conventional_events * POINTS_FOR_CONVENTIONAL
+    max_points = sprint_points + conventional_points
+
+    # Calculate who can win
+    LEADER_POINTS = int(driver_standings.loc[0]['points'])
+
+    WDCPredictDf = pd.DataFrame(columns=[])
+
+    for i, _ in enumerate(driver_standings.iterrows()):
+        driver = driver_standings.loc[i]
+        driver_max_points = int(driver["points"]) + max_points
+        can_win = 'No' if driver_max_points < LEADER_POINTS else 'Yes'
+
+        # Create a dictionary to store the row data
+        row_data = {
+          "Position": driver["position"],  # Use column names if different
+          "Driver": driver["givenName"] + ' ' + driver["familyName"],  # Combine names
+          "Constructor": driver["constructorNames"],
+          "Current Points": driver["points"],
+          "Theoretical Max Points": driver_max_points,
+          "Can Win": can_win
+        }
+
+        # Append the row data as a Series to the DataFrame
+        WDCPredictDf = pd.concat([WDCPredictDf, pd.DataFrame([row_data])], ignore_index=True)
+
+    st.data_editor(
+      WDCPredictDf,
+      height=737,
+      use_container_width=True,
+      disabled=True,
+      hide_index=True,
+    )
+
 def run():
-    st.write("# Welcome to Formula Dash! 🏎️")
-    currentSeasonEvents = getSeason(datetime.datetime.now().year)
-    sessionDetails = ""
-    countryData = []
-
-    st.header(f"{datetime.datetime.now().year} Season Schedule")
-
-    with st.spinner('Fetching data...'):
-      for event in currentSeasonEvents:
-        countryName = ""
-        if event["Country"] == "Great Britain":
-            countryName = "United Kingdom"
-        elif event["Country"] == "Abu Dhabi":
-          countryName = "United Arab Emirates"
-        else:
-          countryName = event["Country"]
-        
-        country = pyc.countries.lookup(countryName)
-        lon, lat = getCountryCoords(countryName)
-
-      for event in currentSeasonEvents:
-        cardLabel = ""
-        countryName = ""
-        
-        if event["Country"] == "Great Britain":
-            countryName = "United Kingdom"
-        elif event["Country"] == "Abu Dhabi":
-          countryName = "United Arab Emirates"
-        else:
-          countryName = event["Country"]
-        country = pyc.countries.lookup(countryName)
-
-        if pd.to_datetime(event["EventDate"]) < datetime.datetime.today():
-          cardLabel = event["OfficialEventName"] + " " + country.flag + " - Completed"
-        else:
-          cardLabel = event["OfficialEventName"] + " " + country.flag
-        
-        print(cardLabel)
-        
-        with st.expander(cardLabel):
-          st.markdown(f'''
-          **{country.flag} {event["EventName"]}** - Round {event["RoundNumber"]}\n
-          **Location:** {event["Location"]}, {event["Country"]}\n
-          ''')
-
-          if pd.isna(event["Session1Date"]) is not True:       
-            st.markdown(f'''**{event["Session1"]}:** {event["Session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
-
-          if pd.isna(event["Session2Date"]) is not True:       
-            st.markdown(f'''**{event["Session2"]}:** {event["Session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
-
-          if pd.isna(event["Session3Date"]) is not True:       
-            st.markdown(f'''**{event["Session3"]}:** {event["Session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
-
-          if pd.isna(event["Session4Date"]) is not True:       
-            st.markdown(f'''**{event["Session4"]}:** {event["Session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
-
-          if pd.isna(event["Session5Date"]) is not True:       
-            st.markdown(f'''**{event["Session5"]}:** {event["Session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
+  st.write("# Welcome to Formula Dash! 🏎️")
+  st.divider()
+  st.header(f"{datetime.datetime.now().year} Season Schedule")
+  displaySeasonSchedule()
+  st.divider()
+  st.header("World Driver's Championship Prediction")
+  st.markdown(f'''Who can still win the World Driver's Championship?''')
+  displayWDCPrediction()
     
+
 st.set_page_config(
-    page_title="Formula Dash",
-    page_icon="🏎️"
+  page_title="Formula Dash",
+  page_icon="🏎️"
 )
 
 if __name__ == "__main__":
-    run()
+  run()
