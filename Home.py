@@ -106,6 +106,64 @@ def displaySeasonSchedule():
         if pd.isna(event["Session5Date"]) is not True:       
           st.markdown(f'''**{event["Session5"]}:** {event["Session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
+def displayDriverCurrentStandings():
+  with st.spinner('Fetching data...'):
+    ergast = Ergast()
+    currentDriverStandings = ergast.get_driver_standings(season='current', round='last')
+    currentDriverStandings = currentDriverStandings.content[0]
+    DriverStandingsDf = pd.DataFrame(columns=[])
+
+    for i, _ in enumerate(currentDriverStandings.iterrows()):
+        driver = currentDriverStandings.loc[i]
+
+        # Create a dictionary to store the row data
+        row_data = {
+          "Position": driver["positionText"],  # Use column names if different
+          "Driver": driver["givenName"] + ' ' + driver["familyName"],  # Combine names
+          "Constructor": driver["constructorNames"],
+          "Current Points": driver["points"],
+          "Wins": driver["wins"]
+        }
+
+        # Append the row data as a Series to the DataFrame
+        DriverStandingsDf = pd.concat([DriverStandingsDf, pd.DataFrame([row_data])], ignore_index=True)
+
+    st.data_editor(
+      DriverStandingsDf,
+      height=737,
+      use_container_width=True,
+      disabled=True,
+      hide_index=True,
+    )
+
+def displayConstructorCurrentStandings():
+  with st.spinner('Fetching data...'):
+    ergast = Ergast()
+    currentConstructorStandings = ergast.get_constructor_standings(season='current', round='last')
+    currentConstructorStandings = currentConstructorStandings.content[0]
+    ConstructorsStandingsDf = pd.DataFrame(columns=[])
+
+    for i, _ in enumerate(currentConstructorStandings.iterrows()):
+      constructor = currentConstructorStandings.loc[i]
+
+      # Create a dictionary to store the row data
+      row_data = {
+        "Position": constructor["positionText"],  # Use column names if different
+        "Constructor": constructor["constructorName"],
+        "Current Points": constructor["points"],
+        "Wins": constructor["wins"]
+      }
+
+      # Append the row data as a Series to the DataFrame
+      ConstructorsStandingsDf = pd.concat([ConstructorsStandingsDf, pd.DataFrame([row_data])], ignore_index=True)
+
+    st.data_editor(
+      ConstructorsStandingsDf,
+      use_container_width=True,
+      disabled=True,
+      hide_index=True,
+    )
+
 def displayWDCPrediction():
   with st.spinner('Calculating...'):
     # Get current standings after last race
@@ -143,7 +201,7 @@ def displayWDCPrediction():
 
         # Create a dictionary to store the row data
         row_data = {
-          "Position": driver["position"],  # Use column names if different
+          "Position": driver["positionText"],  # Use column names if different
           "Driver": driver["givenName"] + ' ' + driver["familyName"],  # Combine names
           "Constructor": driver["constructorNames"],
           "Current Points": driver["points"],
@@ -165,12 +223,34 @@ def displayWDCPrediction():
 def run():
   st.write("# Welcome to Formula Dash! 🏎️")
   st.divider()
+  
   st.header(f"{datetime.datetime.now().year} Season Schedule")
   displaySeasonSchedule()
   st.divider()
+  
+  st.header(f"{datetime.datetime.now().year} Season Standings")
+  with st.expander("Current Season Standings"):
+    tab1, tab2 = st.tabs(["Drivers", "Constructors"])
+    with tab1:
+      st.header("Drivers Standings")
+      displayDriverCurrentStandings()
+    with tab2:
+      st.header("Constructors Standings")
+      displayConstructorCurrentStandings()
+  st.divider()
+  
   st.header("World Driver's Championship Prediction")
-  st.markdown(f'''Who can still win the World Driver's Championship?''')
-  displayWDCPrediction()
+  with st.expander("Championship Prediction"):
+    st.markdown(f'''Who can still win the World Driver's Championship?''')
+    displayWDCPrediction()
+
+  #Sidebar for Anchor links
+  st.sidebar.markdown(f'''
+  # Jump to
+  - [Season Schedule](#{datetime.datetime.now().year}-season-schedule)
+  - [Season Standings](#{datetime.datetime.now().year}-season-standings)
+  - [WDC Prediction](#world-driver-s-championship-prediction)
+  ''', unsafe_allow_html=True)
     
 
 st.set_page_config(
