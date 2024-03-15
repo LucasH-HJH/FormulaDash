@@ -26,11 +26,15 @@ def cleanup(wiki_title):
     except UnicodeDecodeError:
         return unquote(wiki_title, encoding='latin-1')
 
-def get_wiki_thumbnail(url):
+def get_wiki_info(url):
 
   # Extract the page title from the Wikipedia URL
   wiki_title = url.split("/")[-1]
-  wiki_title = cleanup(wiki_title)
+  wiki_title = cleanup(wiki_title)  # Assuming cleanup function handles encoding
+
+  #SPECIAL CONDITION FOR ALEX ALBON
+  if wiki_title == "Alexander_Albon":
+    wiki_title = "Alex_Albon"
 
   # Base URL for the Wikipedia API endpoint
   base_url = "https://en.wikipedia.org/w/api.php"
@@ -49,15 +53,31 @@ def get_wiki_thumbnail(url):
 
   # Parse the JSON response
   data = json.loads(response.text)
-  print(data)
 
-  # Check if the page exists and has a thumbnail
+  # Check if the page exists and has information
   if 'query' in data and 'pages' in data['query'] and data['query']['pages']:
-    page_data = data['query']['pages'][list(data['query']['pages'].keys())[0]]
+    page_id = list(data['query']['pages'].keys())[0]
+    page_data = data['query']['pages'][page_id]
+
+    # Create an empty dictionary to store information
+    wiki_info = {}
+
+    # Extract desired information (modify as needed)
     if 'original' in page_data and 'source' in page_data['original']:
-      return page_data['original']['source']
-  
-  # Return None if thumbnail not found
+      wiki_info['thumbnail_url'] = page_data['original']['source'] #Image
+    
+    if 'pageid' in page_data:
+      wiki_info['page_id'] = page_data['pageid'] #Wikipedia PageID
+    
+    if 'terms' in page_data and 'description' in page_data['terms']:
+        wiki_info['description'] = page_data['terms']['description'][0] #Description
+    
+    if 'terms' in page_data and 'alias' in page_data['terms']:
+        wiki_info['alias'] = page_data['terms']['alias'] #Alias, can have multiple
+
+    return wiki_info
+
+  # Return None if page not found or error occurred
   return None
 
 def getDrivers():
@@ -108,7 +128,7 @@ def run():
     with st.spinner('Fetching data...'):
         driversList = getDrivers()
         constructorsList = getConstructors()
-
+        
         with tab1:
             driverNameList = []
             for driver in driversList:
@@ -118,23 +138,20 @@ def run():
             st.divider()
             
             col1, col2 = st.columns(2)
+            
             for driver in driversList:
                 if selectedDriver == driver.get("fullName"):
+                    driverInfoDict = get_wiki_info(driver["driverUrl"])
                     with col1:
-                        st.markdown(f'''
-                            Full Name: {selectedDriver}\n
-                            Driver Code: {driver["driverCode"]}\n
-                            Driver Number: {driver["driverNumber"]}\n
-                            Date of Birth: {driver["dateOfBirth"]}\n
-                            Nationality: {driver["driverNationality"]}\n
-                        ''')
-                    
+                        st.image(driverInfoDict.get("thumbnail_url"), width=300, caption=driverInfoDict.get("description"))
+
                     with col2:
-                        image_url = get_wiki_thumbnail(driver["driverUrl"])
-                        print(image_url)
-                        #st.image(image_url)
-                        
-            
+                        st.markdown(f'''
+                            **Name:** {selectedDriver} ({driver["driverCode"]})\n
+                            **Driver Number:** {driver["driverNumber"]}\n
+                            **Date of Birth:** {driver["dateOfBirth"].strftime('%Y-%b-%d')} ({(datetime.datetime.now() - driver["dateOfBirth"]).days // 365} Years Old)\n
+                            **Nationality:** {driver["driverNationality"]}\n
+                        ''')
 
         with tab2:
             constructorNameList = []
