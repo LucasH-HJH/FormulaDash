@@ -12,8 +12,53 @@ import streamlit as st
 import fastf1
 import fastf1.plotting
 from fastf1.core import Laps
+import re
+import requests
+import json
+from unidecode import unidecode
+from urllib.parse import unquote
 from fastf1.ergast import Ergast # Will be deprecated post 2024
 ergast = Ergast()
+
+def cleanup(wiki_title):
+    try:
+        return unquote(wiki_title, errors='strict')
+    except UnicodeDecodeError:
+        return unquote(wiki_title, encoding='latin-1')
+
+def get_wiki_thumbnail(url):
+
+  # Extract the page title from the Wikipedia URL
+  wiki_title = url.split("/")[-1]
+  wiki_title = cleanup(wiki_title)
+
+  # Base URL for the Wikipedia API endpoint
+  base_url = "https://en.wikipedia.org/w/api.php"
+
+  # Parameters for the API request
+  params = {
+      "action": "query",
+      "format": "json",
+      "prop": "pageimages|pageterms",
+      "piprop": "original",
+      "titles": wiki_title
+  }
+
+  # Send request to the API
+  response = requests.get(base_url, params=params)
+
+  # Parse the JSON response
+  data = json.loads(response.text)
+  print(data)
+
+  # Check if the page exists and has a thumbnail
+  if 'query' in data and 'pages' in data['query'] and data['query']['pages']:
+    page_data = data['query']['pages'][list(data['query']['pages'].keys())[0]]
+    if 'original' in page_data and 'source' in page_data['original']:
+      return page_data['original']['source']
+  
+  # Return None if thumbnail not found
+  return None
 
 def getDrivers():
     ergast = Ergast()
@@ -70,6 +115,25 @@ def run():
                 driverName = driver.get("fullName")
                 driverNameList.append(driverName)
             selectedDriver = st.selectbox('Driver',driverNameList, index=None, placeholder="Select Driver")
+            st.divider()
+            
+            col1, col2 = st.columns(2)
+            for driver in driversList:
+                if selectedDriver == driver.get("fullName"):
+                    with col1:
+                        st.markdown(f'''
+                            Full Name: {selectedDriver}\n
+                            Driver Code: {driver["driverCode"]}\n
+                            Driver Number: {driver["driverNumber"]}\n
+                            Date of Birth: {driver["dateOfBirth"]}\n
+                            Nationality: {driver["driverNationality"]}\n
+                        ''')
+                    
+                    with col2:
+                        image_url = get_wiki_thumbnail(driver["driverUrl"])
+                        print(image_url)
+                        #st.image(image_url)
+                        
             
 
         with tab2:
