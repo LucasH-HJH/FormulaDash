@@ -19,6 +19,39 @@ from unidecode import unidecode
 from urllib.parse import unquote
 from fastf1.ergast import Ergast # Will be deprecated post 2024
 ergast = Ergast()
+import pycountry as pyc
+import os
+import tempfile
+import urllib.request
+import csv
+
+def getCountryFromNationality(nationality):
+    url = "https://raw.githubusercontent.com/knowitall/chunkedextractor/master/src/main/resources/edu/knowitall/chunkedextractor/demonyms.csv"
+    countryInfo = ""
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_filename = os.path.join(temp_dir, "demonyms.csv")
+
+        try:
+            with urllib.request.urlopen(url) as response, open(temp_filename, "wb") as f:
+                data = response.read()
+                f.write(data)
+
+            # Process the downloaded CSV data
+            with open(temp_filename, "r") as f:
+                reader = csv.reader(f)
+                data = list(reader)  # Convert to a list for easier processing
+                
+            for natCou in data: #natCou stands for Nationality,Country
+                if nationality == natCou[0]:
+                    countryInfo = pyc.countries.lookup(natCou[1])
+                    break
+
+            return countryInfo
+
+        except urllib.error.URLError as e:
+            print(f"Error: Failed to download CSV. {e}")
+            return None  # Or raise an exception if preferred
 
 def cleanup(wiki_title):
     try:
@@ -142,6 +175,7 @@ def run():
             for driver in driversList:
                 if selectedDriver == driver.get("fullName"):
                     driverInfoDict = get_wiki_info(driver["driverUrl"])
+                    driverCountryInfo = getCountryFromNationality(driver["driverNationality"])
                     with col1:
                         st.image(driverInfoDict.get("thumbnail_url"), width=300, caption=driverInfoDict.get("description"))
 
@@ -150,7 +184,7 @@ def run():
                             **Name:** {selectedDriver} ({driver["driverCode"]})\n
                             **Driver Number:** {driver["driverNumber"]}\n
                             **Date of Birth:** {driver["dateOfBirth"].strftime('%Y-%b-%d')} ({(datetime.datetime.now() - driver["dateOfBirth"]).days // 365} Years Old)\n
-                            **Nationality:** {driver["driverNationality"]}\n
+                            **Nationality:** {driver["driverNationality"]} {driverCountryInfo.flag}\n
                         ''')
 
         with tab2:
