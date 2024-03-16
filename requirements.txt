@@ -8,3 +8,4 @@ seaborn
 pycountry
 geopy
 unidecode
+wikipedia

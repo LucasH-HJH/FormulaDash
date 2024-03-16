@@ -15,6 +15,7 @@ from fastf1.core import Laps
 import re
 import requests
 import json
+import wikipedia as wiki
 from unidecode import unidecode
 from urllib.parse import unquote
 from fastf1.ergast import Ergast # Will be deprecated post 2024
@@ -43,6 +44,9 @@ def getCountryFromNationality(nationality):
                 data = list(reader)  # Convert to a list for easier processing
                 
             for natCou in data: #natCou stands for Nationality,Country
+                if nationality == "Monegasque":
+                    nationality = "Monégasque"
+
                 if nationality == natCou[0]:
                     countryInfo = pyc.countries.lookup(natCou[1])
                     break
@@ -191,6 +195,48 @@ def displayDriverStandingsInfo(driverId):
       disabled=True
     )
 
+def displayDriverRaceResults(driverId):
+    ergast = Ergast(result_type='pandas', auto_cast=True)
+    driverResultsInfo = ergast.get_race_results(season='current',driver=driverId)
+    races = []
+    raceResults = []
+    raceResultsDict = {}
+    
+    # Get race rounds
+    for race in driverResultsInfo.description.iterrows():
+        races.append(race[1].raceName)
+
+    # Get results for race rounds
+    # Get standings for individual seasons
+    for resultInfo in driverResultsInfo.content:
+        for i, _ in enumerate(resultInfo.iterrows()):
+            result = resultInfo.loc[i]
+            row_data = {
+            #"Team": result["constructorName"],
+            "Finish Pos.": result["position"],
+            "Grid Pos.": result["grid"],
+            "Points": result["points"],
+            "Status": result["status"],
+            "Laps": result["laps"],
+            "Fastest Lap Rank": result["fastestLapRank"],
+            "Fastest Lap Number": result["fastestLapNumber"],
+            "Fastest Lap Time": result["fastestLapTime"],
+            "Fastest Lap Average Speed": str(result["fastestLapAvgSpeed"]) + ' ' + result["fastestLapAvgSpeedUnits"]
+            }
+            raceResults.append(row_data)
+            
+    raceResultsDict = dict(zip(races, raceResults))
+    driverRaceResultsDf = pd.DataFrame.from_dict(raceResultsDict, orient='index')
+    driverRaceResultsDf.index.name = 'Race'
+    try:
+        driverRaceResultsDf["Fastest Lap Time"] = driverRaceResultsDf["Fastest Lap Time"].fillna(pd.Timedelta(seconds=0))  # Replace NaNs with 0
+        driverRaceResultsDf["Fastest Lap Time"] = driverRaceResultsDf["Fastest Lap Time"].apply(lambda x: strftimedelta(x, '%h:%m:%s.%ms'))
+    except KeyError:
+        print("No Time")
+    
+    st.dataframe(driverRaceResultsDf)
+
+
 def run():
     tab1, tab2 = st.tabs(["Driver","Team"])
     selectedDriver = ""
@@ -217,18 +263,23 @@ def run():
                         st.image(driverInfoDict.get("thumbnail_url"), width=300, caption=driverInfoDict.get("description"))
 
                     with col2:
+                        st.subheader(f'''{selectedDriver} ({driver["driverCode"]})''')
                         st.markdown(f'''
-                            **Name:** {selectedDriver} ({driver["driverCode"]})\n
+                            
                             **Driver Number:** {driver["driverNumber"]}\n
                             **Date of Birth:** {driver["dateOfBirth"].strftime('%Y-%b-%d')} ({(datetime.datetime.now() - driver["dateOfBirth"]).days // 365} Years Old)\n
                             **Nationality:** {driver["driverNationality"]} {driverCountryInfo.flag}\n
                         ''')
                         st.divider()
+                        st.subheader("Summary")
+                        st.markdown(wiki.summary(driver["fullName"], auto_suggest=False, sentences=2)) # Display Summary of Driver
+                        st.link_button("Go to Wikipedia Page", driver["driverUrl"], use_container_width=True)
                     
+                    st.header("Current Season Results")
+                    displayDriverRaceResults(driver["driverId"])
                     st.header("Career Statistics")
                     displayDriverStandingsInfo(driver["driverId"])
-
-
+                    
         with tab2:
             constructorNameList = []
             for constructor in constructorsList:
