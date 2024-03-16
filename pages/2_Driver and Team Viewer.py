@@ -145,7 +145,7 @@ def getConstructors():
         constructor = constructorsInfo.loc[i]
         # Create a dictionary to store the row data
         row_data = {
-            "costructorId": constructor["constructorId"],
+            "constructorId": constructor["constructorId"],
             "constructorUrl": constructor["constructorUrl"],
             "constructorName": constructor["constructorName"],
             "constructorNationality": constructor["constructorNationality"]
@@ -153,6 +153,43 @@ def getConstructors():
         constructorsList.append(row_data)
 
     return constructorsList
+
+def displayDriverStandingsInfo(driverId):
+    ergast = Ergast(result_type='pandas', auto_cast=True)
+    driverStandingsInfo = ergast.get_driver_standings(driver=driverId)
+    driverSeasons = []
+    driverStandings = []
+    driverStandingsDict = {}
+
+    # Get driver seasons
+    for seasonInfo in driverStandingsInfo.description.iterrows():
+        driverSeasons.append(seasonInfo[1].season)
+        
+    # Get standings for individual seasons
+    for standingInfo in driverStandingsInfo.content:
+        for i, _ in enumerate(standingInfo.iterrows()):
+            standing = standingInfo.loc[i]
+            row_data = {
+                "Position": standing["positionText"],
+                "Team": standing["constructorNames"],
+                "Points": standing["points"],
+                "Wins": standing["wins"]
+            }
+            driverStandings.append(row_data)
+
+    driverStandingsDict = dict(zip(driverSeasons, driverStandings))
+    driverStandingsDf = pd.DataFrame.from_dict(driverStandingsDict, orient='index')
+    driverStandingsDf.index.name = 'Season'
+    st.data_editor(
+      driverStandingsDf,
+      column_config={
+            "Season": st.column_config.TextColumn(
+                "Season"
+            )
+        },
+      use_container_width=True,
+      disabled=True
+    )
 
 def run():
     tab1, tab2 = st.tabs(["Driver","Team"])
@@ -186,6 +223,11 @@ def run():
                             **Date of Birth:** {driver["dateOfBirth"].strftime('%Y-%b-%d')} ({(datetime.datetime.now() - driver["dateOfBirth"]).days // 365} Years Old)\n
                             **Nationality:** {driver["driverNationality"]} {driverCountryInfo.flag}\n
                         ''')
+                        st.divider()
+                    
+                    st.header("Career Statistics")
+                    displayDriverStandingsInfo(driver["driverId"])
+
 
         with tab2:
             constructorNameList = []
