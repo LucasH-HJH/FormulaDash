@@ -140,23 +140,72 @@ def getDrivers():
 
     return driversList
 
-def getConstructors():
-    ergast = Ergast()
-    constructorsInfo = ergast.get_constructor_info(season='current',round='last')
-    constructorsList = []
+def displayDriverRaceResults(driverId):
+    ergast = Ergast(result_type='pandas', auto_cast=True)
+    driverResultsInfo = ergast.get_race_results(season='current',driver=driverId)
+    races = []
+    raceResults = []
+    raceResultsDict = {}
     
-    for i, _ in enumerate(constructorsInfo.iterrows()):
-        constructor = constructorsInfo.loc[i]
-        # Create a dictionary to store the row data
-        row_data = {
-            "constructorId": constructor["constructorId"],
-            "constructorUrl": constructor["constructorUrl"],
-            "constructorName": constructor["constructorName"],
-            "constructorNationality": constructor["constructorNationality"]
-        }
-        constructorsList.append(row_data)
+    # Get race rounds
+    for race in driverResultsInfo.description.iterrows():
+        races.append(race[1].raceName)
 
-    return constructorsList
+    # Get results for race rounds
+    for resultInfo in driverResultsInfo.content:
+        for i, _ in enumerate(resultInfo.iterrows()):
+            result = resultInfo.loc[i]
+            try:
+                row_data = {
+                "Team": result["constructorName"],
+                "Finish Pos.": result["position"],
+                "Grid Pos.": result["grid"],
+                "Points": result["points"],
+                "Status": result["status"],
+                "Laps": result["laps"],
+                "Fastest Lap Rank": result["fastestLapRank"],
+                "Fastest Lap Number": result["fastestLapNumber"],
+                "Fastest Lap Time": result["fastestLapTime"],
+                "Fastest Lap Average Speed": str(result["fastestLapAvgSpeed"]) + ' ' + result["fastestLapAvgSpeedUnits"]
+                }
+            except:
+                row_data = {
+                "Team": result["constructorName"],
+                "Finish Pos.": result["position"],
+                "Grid Pos.": result["grid"],
+                "Points": result["points"],
+                "Status": result["status"],
+                "Laps": result["laps"],
+                "Fastest Lap Rank": 0,
+                "Fastest Lap Number": 0,
+                "Fastest Lap Time": datetime.timedelta(0),
+                "Fastest Lap Average Speed": 0
+                }
+            raceResults.append(row_data)
+            
+    raceResultsDict = dict(zip(races, raceResults))
+    driverRaceResultsDf = pd.DataFrame.from_dict(raceResultsDict, orient='index')
+    driverRaceResultsDf.index.name = 'Race'
+    try:
+        driverRaceResultsDf["Fastest Lap Time"] = driverRaceResultsDf["Fastest Lap Time"].fillna(pd.Timedelta(seconds=0))  # Replace NaNs with 0
+        driverRaceResultsDf["Fastest Lap Time"] = driverRaceResultsDf["Fastest Lap Time"].apply(lambda x: strftimedelta(x, '%h:%m:%s.%ms'))
+    except KeyError:
+        print("No Time")
+    
+    st.dataframe(driverRaceResultsDf)
+
+    #Chart Plotting
+    fastf1.plotting.setup_mpl(misc_mpl_mods=False)
+    plt.figure(figsize=(10, 6))
+    plt.plot(driverRaceResultsDf["Points"], color="red")
+    plt.xlabel("Race")
+    plt.ylabel("Points")
+    plt.title("Points Scored by Race")
+    plt.ylim(0, 30)  # Set y-axis range from 0 to 30
+    plt.grid(True)
+    plt.scatter(driverRaceResultsDf.index, driverRaceResultsDf["Points"], color='red', s=50)
+    st.pyplot(plt)
+    plt.close()
 
 def displayDriverStandingsInfo(driverId):
     ergast = Ergast(result_type='pandas', auto_cast=True)
@@ -195,101 +244,83 @@ def displayDriverStandingsInfo(driverId):
       disabled=True
     )
 
-def displayDriverRaceResults(driverId):
-    ergast = Ergast(result_type='pandas', auto_cast=True)
-    driverResultsInfo = ergast.get_race_results(season='current',driver=driverId)
-    races = []
-    raceResults = []
-    raceResultsDict = {}
-    
-    # Get race rounds
-    for race in driverResultsInfo.description.iterrows():
-        races.append(race[1].raceName)
+    #Chart Plotting
+    fastf1.plotting.setup_mpl(misc_mpl_mods=False)
+    plt.figure(figsize=(10, 6))
+    plt.plot(driverStandingsDf["Points"], color="red")
+    plt.xlabel("Season")
+    plt.ylabel("Points")
+    plt.title("Points Scored by Season")
+    plt.grid(True)
+    plt.scatter(driverStandingsDf.index, driverStandingsDf["Points"], color='red', s=50)
+    st.pyplot(plt)
+    plt.close()
 
-    # Get results for race rounds
-    # Get standings for individual seasons
-    for resultInfo in driverResultsInfo.content:
-        for i, _ in enumerate(resultInfo.iterrows()):
-            result = resultInfo.loc[i]
-            row_data = {
-            #"Team": result["constructorName"],
-            "Finish Pos.": result["position"],
-            "Grid Pos.": result["grid"],
-            "Points": result["points"],
-            "Status": result["status"],
-            "Laps": result["laps"],
-            "Fastest Lap Rank": result["fastestLapRank"],
-            "Fastest Lap Number": result["fastestLapNumber"],
-            "Fastest Lap Time": result["fastestLapTime"],
-            "Fastest Lap Average Speed": str(result["fastestLapAvgSpeed"]) + ' ' + result["fastestLapAvgSpeedUnits"]
-            }
-            raceResults.append(row_data)
-            
-    raceResultsDict = dict(zip(races, raceResults))
-    driverRaceResultsDf = pd.DataFrame.from_dict(raceResultsDict, orient='index')
-    driverRaceResultsDf.index.name = 'Race'
-    try:
-        driverRaceResultsDf["Fastest Lap Time"] = driverRaceResultsDf["Fastest Lap Time"].fillna(pd.Timedelta(seconds=0))  # Replace NaNs with 0
-        driverRaceResultsDf["Fastest Lap Time"] = driverRaceResultsDf["Fastest Lap Time"].apply(lambda x: strftimedelta(x, '%h:%m:%s.%ms'))
-    except KeyError:
-        print("No Time")
-    
-    st.dataframe(driverRaceResultsDf)
 
+# def getConstructors():
+#     ergast = Ergast()
+#     constructorsInfo = ergast.get_constructor_info(season='current',round='last')
+#     constructorsList = []
+    
+#     for i, _ in enumerate(constructorsInfo.iterrows()):
+#         constructor = constructorsInfo.loc[i]
+#         # Create a dictionary to store the row data
+#         row_data = {
+#             "constructorId": constructor["constructorId"],
+#             "constructorUrl": constructor["constructorUrl"],
+#             "constructorName": constructor["constructorName"],
+#             "constructorNationality": constructor["constructorNationality"]
+#         }
+#         constructorsList.append(row_data)
+
+#     print(constructorsList)
+#     return constructorsList
 
 def run():
-    tab1, tab2 = st.tabs(["Driver","Team"])
+    #tab1, tab2 = st.tabs(["Driver","Team"])
     selectedDriver = ""
     selectedConstructor = ""
     with st.spinner('Fetching data...'):
         driversList = getDrivers()
-        constructorsList = getConstructors()
-        
-        with tab1:
-            driverNameList = []
-            for driver in driversList:
-                driverName = driver.get("fullName")
-                driverNameList.append(driverName)
-            selectedDriver = st.selectbox('Driver',driverNameList, index=None, placeholder="Select Driver")
-            st.divider()
-            
-            col1, col2 = st.columns(2)
-            
-            for driver in driversList:
-                if selectedDriver == driver.get("fullName"):
-                    driverInfoDict = get_wiki_info(driver["driverUrl"])
-                    driverCountryInfo = getCountryFromNationality(driver["driverNationality"])
-                    with col1:
-                        st.image(driverInfoDict.get("thumbnail_url"), width=300, caption=driverInfoDict.get("description"))
 
-                    with col2:
-                        st.subheader(f'''{selectedDriver} ({driver["driverCode"]})''')
-                        st.markdown(f'''
-                            
-                            **Driver Number:** {driver["driverNumber"]}\n
-                            **Date of Birth:** {driver["dateOfBirth"].strftime('%Y-%b-%d')} ({(datetime.datetime.now() - driver["dateOfBirth"]).days // 365} Years Old)\n
-                            **Nationality:** {driver["driverNationality"]} {driverCountryInfo.flag}\n
-                        ''')
-                        st.divider()
-                        st.subheader("Summary")
-                        st.markdown(wiki.summary(driver["fullName"], auto_suggest=False, sentences=2)) # Display Summary of Driver
-                        st.link_button("Go to Wikipedia Page", driver["driverUrl"], use_container_width=True)
-                    
-                    st.header("Current Season Results")
-                    displayDriverRaceResults(driver["driverId"])
-                    st.header("Career Statistics")
-                    displayDriverStandingsInfo(driver["driverId"])
-                    
-        with tab2:
-            constructorNameList = []
-            for constructor in constructorsList:
-                constructorName = constructor.get("constructorName")
-                constructorNameList.append(constructorName)
-            selectedConstructor = st.selectbox('Team',constructorNameList, index=None, placeholder="Select Team")
+        driverNameList = []
+        for driver in driversList:
+            driverName = driver.get("fullName")
+            driverNameList.append(driverName)
+        selectedDriver = st.selectbox('Driver',driverNameList, index=None, placeholder="Select Driver")
+        st.divider()
+        col1, col2 = st.columns(2)
         
+        for driver in driversList:
+            if selectedDriver == driver.get("fullName"):
+                driverInfoDict = get_wiki_info(driver["driverUrl"])
+                driverCountryInfo = getCountryFromNationality(driver["driverNationality"])
+                with col1:
+                    st.image(driverInfoDict.get("thumbnail_url"), width=300, caption=driverInfoDict.get("description"))
+
+                with col2:
+                    st.subheader(f'''{selectedDriver} ({driver["driverCode"]})''')
+                    st.markdown(f'''
+                        **Driver Number:** {driver["driverNumber"]}\n
+                        **Date of Birth:** {driver["dateOfBirth"].strftime('%Y-%b-%d')} ({(datetime.datetime.now() - driver["dateOfBirth"]).days // 365} Years Old)\n
+                        **Nationality:** {driver["driverNationality"]} {driverCountryInfo.flag}\n
+                    ''')
+                    st.divider()
+                    st.subheader("Summary")
+                    if driver["fullName"] == "George Russell": # George Russell's wiki page name has (racing driver)
+                        driver["fullName"] = "George Russell (racing driver)"
+                    st.markdown(wiki.summary(driver["fullName"], auto_suggest=False, sentences=2)) # Display Summary of Driver
+                    st.link_button("Go to Wikipedia Page", driver["driverUrl"], use_container_width=True)
+                
+                st.divider()
+                st.header("Current Season Results")
+                displayDriverRaceResults(driver["driverId"])
+                st.divider()
+                st.header("Career Results")
+                displayDriverStandingsInfo(driver["driverId"])       
 
 st.set_page_config(page_title="Driver/Team Viewer - Formula Dash", page_icon="👨‍🔧")
-st.markdown("# Driver/Team Viewer")
-st.write("""View information regarding a Driver or Team participating in the current season.""")
+st.markdown("# Driver Viewer")
+st.write("""View information regarding a Driver participating in the current season.""")
 
 run()
