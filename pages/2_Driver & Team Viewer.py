@@ -195,18 +195,21 @@ def displayDriverRaceResults(driverId):
     
     st.dataframe(driverRaceResultsDf)
 
-    #Chart Plotting
-    fastf1.plotting.setup_mpl(misc_mpl_mods=False)
-    plt.figure(figsize=(10, 6))
-    plt.plot(driverRaceResultsDf["Points"], color="red")
-    plt.xlabel("Race")
-    plt.ylabel("Points")
-    plt.title("Points Scored by Race")
-    plt.ylim(0, 30)  # Set y-axis range from 0 to 30
-    plt.grid(True)
-    plt.scatter(driverRaceResultsDf.index, driverRaceResultsDf["Points"], color='red', s=50)
-    st.pyplot(plt)
-    plt.close()
+    try:
+        #Chart Plotting
+        fastf1.plotting.setup_mpl(misc_mpl_mods=False)
+        plt.figure(figsize=(10, 6))
+        plt.plot(driverRaceResultsDf["Points"], color="red")
+        plt.xlabel("Race")
+        plt.ylabel("Points")
+        plt.title("Points Scored by Race")
+        plt.ylim(0, 30)  # Set y-axis range from 0 to 30
+        plt.grid(True)
+        plt.scatter(driverRaceResultsDf.index, driverRaceResultsDf["Points"], color='red', s=50)
+        st.pyplot(plt)
+        plt.close()
+    except:
+        st.info("Some infomation may not available.", icon="ℹ️")
 
 def displayDriverStandingsInfo(driverId):
     ergast = Ergast(result_type='pandas', auto_cast=True)
@@ -245,17 +248,20 @@ def displayDriverStandingsInfo(driverId):
       disabled=True
     )
 
-    #Chart Plotting
-    fastf1.plotting.setup_mpl(misc_mpl_mods=False)
-    plt.figure(figsize=(10, 6))
-    plt.plot(driverStandingsDf["Points"], color="red")
-    plt.xlabel("Season")
-    plt.ylabel("Points")
-    plt.title("Points Scored by Season")
-    plt.grid(True)
-    plt.scatter(driverStandingsDf.index, driverStandingsDf["Points"], color='red', s=50)
-    st.pyplot(plt)
-    plt.close()
+    try:
+        #Chart Plotting
+        fastf1.plotting.setup_mpl(misc_mpl_mods=False)
+        plt.figure(figsize=(10, 6))
+        plt.plot(driverStandingsDf["Points"], color="red")
+        plt.xlabel("Season")
+        plt.ylabel("Points")
+        plt.title("Points Scored by Season")
+        plt.grid(True)
+        plt.scatter(driverStandingsDf.index, driverStandingsDf["Points"], color='red', s=50)
+        st.pyplot(plt)
+        plt.close()
+    except:
+        st.info("Some infomation may not available.", icon="ℹ️")
 
 def getConstructors():
     ergast = Ergast()
