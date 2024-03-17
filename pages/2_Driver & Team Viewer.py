@@ -17,6 +17,7 @@ import requests
 import json
 import wikipedia as wiki
 from bs4 import BeautifulSoup
+from urllib.request import urlopen
 from unidecode import unidecode
 from urllib.parse import unquote
 from fastf1.ergast import Ergast # Will be deprecated post 2024
@@ -296,6 +297,27 @@ def getWikiImage(url): # Different version used for Constructors Wiki page
 
     return main_image_url
 
+def getInfoBox(url):
+  try:
+    wiki_title = url.split("/")[-1]
+    wiki_title = cleanup(wiki_title)
+    page = wiki.page(wiki_title, auto_suggest=False)
+    soup = BeautifulSoup(page.html(), 'html.parser')
+    table = soup.find('table', class_='infobox vcard')
+    result = {}
+    for row in table.find_all('tr'):
+      th = row.find('th')
+      td = row.find('td')
+      if th and td:
+        # Improved regular expression for bracketed content and equivalents
+        pattern = r"\[[a-zA-Z0-9]+\]|\(.*?\)"  
+        data = re.sub(pattern, '', td.text.strip())
+        result[th.text.strip()] = data
+    return result
+  except Exception as e:
+    print(f"Error getting infobox data: {e}")
+    return None
+
 def getWikiPageIdFromUrl(url):
     wiki_title = url.split("/")[-1]
     wiki_title = cleanup(wiki_title)
@@ -361,15 +383,62 @@ def run():
                     constructorCountryInfo = getCountryFromNationality(team["constructorNationality"])
                     with col1:
                         st.image("https:" + getWikiImage(team["constructorUrl"]), width=300)
+                    
                     with col2:
+                        teamWikiInfoBox = getInfoBox(team["constructorUrl"])
+                        teamFullName = ""
+                        teamHQLocation = ""
+                        teamCarChassis = ""
+                        teamCarEngine = ""
+                        teamWCC = ""
+                        teamWDC = ""
+                        teamWins = ""
+                        teamPodiums = ""
+                        teamPoints = ""
+                        teamPoles = ""
+                        for key, value in teamWikiInfoBox.items():
+                            if key == "Full name":
+                                teamFullName = value
+                            if key == "Chassis":
+                                teamCarChassis = value
+                            if key == "Engine":
+                                teamCarEngine = value
+                            if key == "Constructors'Championships":
+                                teamWCC = value
+                            if key == "Drivers'Championships":
+                                teamWDC = value
+                            if key == "Race victories":
+                                teamWins = value
+                            if key == "Podiums":
+                                teamPodiums = value
+                            if key == "Points":
+                                teamPoints = value
+                            if key == "Pole positions":
+                                teamPoles = value
+                            if key == "Fastest laps":
+                                teamFastestLaps = value
+                            print(f"{key}: {value}")
                         st.subheader(f'''{selectedConstructor}''')
                         st.markdown(f'''
+                            **Full Name:** {teamFullName}\n
                             **Nationality:** {team["constructorNationality"]} {constructorCountryInfo.flag}\n
+                            **Chassis:** {teamCarChassis}\n
+                            **Engine:** {teamCarEngine}\n
                         ''')
                         pageId = getWikiPageIdFromUrl(team["constructorUrl"])
+                    
                     st.divider()
                     st.header("Team Summary")
-                    with st.expander("Summary"):
+                    with st.expander("Career"):
+                            st.markdown(f'''
+                            **Constructors' Championships:** {teamWCC}\n
+                            **Drivers' Championships:** {teamWDC}\n
+                            **Wins:** {teamWins}\n
+                            **Podiums:** {teamPodiums}\n
+                            **Pole Positions:** {teamPoles}\n
+                            **Fastest Laps:** {teamFastestLaps}
+                        ''')
+                    with st.expander("History"):
                         st.markdown(wiki.WikipediaPage(pageid=pageId).summary) # Display Summary of Team
                     st.link_button("Go to Wikipedia Page", team["constructorUrl"], use_container_width=True)
 
