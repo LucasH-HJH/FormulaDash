@@ -16,6 +16,7 @@ import re
 import requests
 import json
 import wikipedia as wiki
+from bs4 import BeautifulSoup
 from unidecode import unidecode
 from urllib.parse import unquote
 from fastf1.ergast import Ergast # Will be deprecated post 2024
@@ -256,71 +257,118 @@ def displayDriverStandingsInfo(driverId):
     st.pyplot(plt)
     plt.close()
 
-
-# def getConstructors():
-#     ergast = Ergast()
-#     constructorsInfo = ergast.get_constructor_info(season='current',round='last')
-#     constructorsList = []
+def getConstructors():
+    ergast = Ergast()
+    constructorsInfo = ergast.get_constructor_info(season='current',round='last')
+    constructorsList = []
     
-#     for i, _ in enumerate(constructorsInfo.iterrows()):
-#         constructor = constructorsInfo.loc[i]
-#         # Create a dictionary to store the row data
-#         row_data = {
-#             "constructorId": constructor["constructorId"],
-#             "constructorUrl": constructor["constructorUrl"],
-#             "constructorName": constructor["constructorName"],
-#             "constructorNationality": constructor["constructorNationality"]
-#         }
-#         constructorsList.append(row_data)
+    for i, _ in enumerate(constructorsInfo.iterrows()):
+        constructor = constructorsInfo.loc[i]
+        # Create a dictionary to store the row data
+        row_data = {
+            "constructorId": constructor["constructorId"],
+            "constructorUrl": constructor["constructorUrl"],
+            "constructorName": constructor["constructorName"],
+            "constructorNationality": constructor["constructorNationality"]
+        }
+        constructorsList.append(row_data)
 
-#     print(constructorsList)
-#     return constructorsList
+    return constructorsList
+
+def getWikiImage(url): # Different version used for Constructors Wiki page
+    wiki_title = url.split("/")[-1]
+    wiki_title = cleanup(wiki_title)
+    page = wiki.page(wiki_title, auto_suggest=False)
+    soup = BeautifulSoup(page.html(), 'html.parser')
+
+    main_image = soup.select_one(".infobox-image img")
+
+    if main_image:
+      main_image_url = main_image.get('src')
+    else:
+        main_image_url = None
+
+    return main_image_url
+
+def getWikiPageIdFromUrl(url):
+    wiki_title = url.split("/")[-1]
+    wiki_title = cleanup(wiki_title)
+    pageId = wiki.page(wiki_title, auto_suggest=False).pageid
+    return pageId
 
 def run():
-    #tab1, tab2 = st.tabs(["Driver","Team"])
+    tab1, tab2 = st.tabs(["Driver","Team"])
     selectedDriver = ""
     selectedConstructor = ""
     with st.spinner('Fetching data...'):
         driversList = getDrivers()
+        constructorsList = getConstructors()
 
-        driverNameList = []
-        for driver in driversList:
-            driverName = driver.get("fullName")
-            driverNameList.append(driverName)
-        selectedDriver = st.selectbox('Driver',driverNameList, index=None, placeholder="Select Driver")
-        st.divider()
-        col1, col2 = st.columns(2)
-        
-        for driver in driversList:
-            if selectedDriver == driver.get("fullName"):
-                driverInfoDict = get_wiki_info(driver["driverUrl"])
-                driverCountryInfo = getCountryFromNationality(driver["driverNationality"])
-                with col1:
-                    st.image(driverInfoDict.get("thumbnail_url"), width=300, caption=driverInfoDict.get("description"))
+        with tab1:
+            driverNameList = []
+            for driver in driversList:
+                driverName = driver.get("fullName")
+                driverNameList.append(driverName)
+            selectedDriver = st.selectbox('Driver',driverNameList, index=None, placeholder="Select Driver")
+            st.divider()
+            col1, col2 = st.columns(2)
+            
+            for driver in driversList:
+                if selectedDriver == driver.get("fullName"):
+                    driverInfoDict = get_wiki_info(driver["driverUrl"])
+                    driverCountryInfo = getCountryFromNationality(driver["driverNationality"])
+                    with col1:
+                        st.image(driverInfoDict.get("thumbnail_url"), width=300, caption=driverInfoDict.get("description"))
 
-                with col2:
-                    st.subheader(f'''{selectedDriver} ({driver["driverCode"]})''')
-                    st.markdown(f'''
-                        **Driver Number:** {driver["driverNumber"]}\n
-                        **Date of Birth:** {driver["dateOfBirth"].strftime('%Y-%b-%d')} ({(datetime.datetime.now() - driver["dateOfBirth"]).days // 365} Years Old)\n
-                        **Nationality:** {driver["driverNationality"]} {driverCountryInfo.flag}\n
-                    ''')
+                    with col2:
+                        st.subheader(f'''{selectedDriver} ({driver["driverCode"]})''')
+                        st.markdown(f'''
+                            **Driver Number:** {driver["driverNumber"]}\n
+                            **Date of Birth:** {driver["dateOfBirth"].strftime('%Y-%b-%d')} ({(datetime.datetime.now() - driver["dateOfBirth"]).days // 365} Years Old)\n
+                            **Nationality:** {driver["driverNationality"]} {driverCountryInfo.flag}\n
+                        ''')
+                        st.divider()
+                        st.subheader("Summary")
+                        if driver["fullName"] == "George Russell": # George Russell's wiki page name has (racing driver)
+                            driver["fullName"] = "George Russell (racing driver)"
+                        st.markdown(wiki.summary(driver["fullName"], auto_suggest=False, sentences=2)) # Display Summary of Driver
+                        st.link_button("Go to Wikipedia Page", driver["driverUrl"], use_container_width=True)
+                    
                     st.divider()
-                    st.subheader("Summary")
-                    if driver["fullName"] == "George Russell": # George Russell's wiki page name has (racing driver)
-                        driver["fullName"] = "George Russell (racing driver)"
-                    st.markdown(wiki.summary(driver["fullName"], auto_suggest=False, sentences=2)) # Display Summary of Driver
-                    st.link_button("Go to Wikipedia Page", driver["driverUrl"], use_container_width=True)
-                
-                st.divider()
-                st.header("Current Season Results")
-                displayDriverRaceResults(driver["driverId"])
-                st.divider()
-                st.header("Career Results")
-                displayDriverStandingsInfo(driver["driverId"])       
+                    st.header("Current Season Results")
+                    displayDriverRaceResults(driver["driverId"])
+                    st.divider()
+                    st.header("Career Results")
+                    displayDriverStandingsInfo(driver["driverId"])
+
+        with tab2:
+            constructorsNameList = []
+            for team in constructorsList:
+                teamName = team.get("constructorName")
+                constructorsNameList.append(teamName)
+            selectedConstructor = st.selectbox('Team',constructorsNameList, index=None, placeholder="Select Team")
+            st.divider()
+            col1, col2 = st.columns(2)
+            
+            for team in constructorsList:
+                if selectedConstructor == team.get("constructorName"):
+                    constructorCountryInfo = getCountryFromNationality(team["constructorNationality"])
+                    with col1:
+                        st.image("https:" + getWikiImage(team["constructorUrl"]), width=300)
+                    with col2:
+                        st.subheader(f'''{selectedConstructor}''')
+                        st.markdown(f'''
+                            **Nationality:** {team["constructorNationality"]} {constructorCountryInfo.flag}\n
+                        ''')
+                        pageId = getWikiPageIdFromUrl(team["constructorUrl"])
+                    st.divider()
+                    st.header("Team Summary")
+                    with st.expander("Summary"):
+                        st.markdown(wiki.WikipediaPage(pageid=pageId).summary) # Display Summary of Team
+                    st.link_button("Go to Wikipedia Page", team["constructorUrl"], use_container_width=True)
 
 st.set_page_config(page_title="Driver/Team Viewer - Formula Dash", page_icon="👨‍🔧")
-st.markdown("# Driver Viewer")
-st.write("""View information regarding a Driver participating in the current season.""")
+st.markdown("# Driver/Team Viewer")
+st.write("""View information regarding a Driver or Team participating in the current season.""")
 
 run()
