@@ -282,6 +282,22 @@ def getConstructors():
 
     return constructorsList
 
+def getConstructorDrivers(constructorName):
+    ergast = Ergast()
+    currentDriverStandings = ergast.get_driver_standings(season='current', round='last')
+    currentDriverStandings = currentDriverStandings.content[0]
+    constructorDriversList = []
+
+    for i, _ in enumerate(currentDriverStandings.iterrows()):
+        driver = currentDriverStandings.loc[i]
+
+        #Get drivers from the specified constructor
+        for constructor in driver["constructorNames"]:
+            if constructor == constructorName:
+                constructorDriversList.append(driver["givenName"] + ' ' + driver["familyName"] + ' (' + driver["driverCode"] + ')')
+
+    return constructorDriversList
+
 def getWikiImage(url): # Different version used for Constructors Wiki page
     wiki_title = url.split("/")[-1]
     wiki_title = cleanup(wiki_title)
@@ -385,9 +401,9 @@ def run():
                         st.image("https:" + getWikiImage(team["constructorUrl"]), width=300)
                     
                     with col2:
+                        teamDriversList = getConstructorDrivers(team["constructorName"])
                         teamWikiInfoBox = getInfoBox(team["constructorUrl"])
                         teamFullName = ""
-                        teamHQLocation = ""
                         teamCarChassis = ""
                         teamCarEngine = ""
                         teamWCC = ""
@@ -396,6 +412,8 @@ def run():
                         teamPodiums = ""
                         teamPoints = ""
                         teamPoles = ""
+                        teamRacesEntered = ""
+                        teamFirstEntry = ""
                         for key, value in teamWikiInfoBox.items():
                             if key == "Full name":
                                 teamFullName = value
@@ -417,7 +435,19 @@ def run():
                                 teamPoles = value
                             if key == "Fastest laps":
                                 teamFastestLaps = value
-                            print(f"{key}: {value}")
+                            if key == "Races entered":
+                                teamRacesEntered = value
+                            if key == "First entry":
+                                teamFirstEntry = value
+                            
+                            #print(f"{key}: {value}")
+
+                        if teamWCC == "":
+                            teamWCC = 0
+                        
+                        if teamWDC == "":
+                            teamWDC = 0
+                        
                         st.subheader(f'''{selectedConstructor}''')
                         st.markdown(f'''
                             **Full Name:** {teamFullName}\n
@@ -425,19 +455,24 @@ def run():
                             **Chassis:** {teamCarChassis}\n
                             **Engine:** {teamCarEngine}\n
                         ''')
+                        s = ''
+                        for i in teamDriversList:
+                            s += "- " + i + "\n"
+                        st.markdown(f'''**Drivers:**\n{s}''')
                         pageId = getWikiPageIdFromUrl(team["constructorUrl"])
                     
                     st.divider()
                     st.header("Team Summary")
                     with st.expander("Career"):
-                            st.markdown(f'''
-                            **Constructors' Championships:** {teamWCC}\n
-                            **Drivers' Championships:** {teamWDC}\n
-                            **Wins:** {teamWins}\n
-                            **Podiums:** {teamPodiums}\n
-                            **Pole Positions:** {teamPoles}\n
-                            **Fastest Laps:** {teamFastestLaps}
-                        ''')
+                        st.write(f'''**Constructors' Championships:** {teamWCC}\n''')
+                        st.write(f'''**Drivers' Championships:** {teamWDC}\n''')
+                        st.write(f'''**First Race Entry:** {teamFirstEntry}\n''')            
+                        st.write(f'''**Races Entered:** {teamRacesEntered}\n''')
+                        st.write(f'''**Wins:** {teamWins}\n''')
+                        st.write(f'''**Points:** {teamPoints}\n''')
+                        st.write(f'''**Podiums:** {teamPodiums}\n''')
+                        st.write(f'''**Pole Positions:** {teamPoles}\n''')
+                        st.write(f'''**Fastest Laps:** {teamFastestLaps}\n''')
                     with st.expander("History"):
                         st.markdown(wiki.WikipediaPage(pageid=pageId).summary) # Display Summary of Team
                     st.link_button("Go to Wikipedia Page", team["constructorUrl"], use_container_width=True)

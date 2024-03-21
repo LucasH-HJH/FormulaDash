@@ -9,4 +9,4 @@ pycountry
 geopy
 unidecode
 wikipedia
-BeautifulSoup
+bs4

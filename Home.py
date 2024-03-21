@@ -19,9 +19,14 @@ import fastf1.plotting
 from fastf1.core import Laps
 from fastf1.ergast import Ergast # Will be deprecated post 2024
 ergast = Ergast()
-# import wikipedia
-# import requests
-# import json
+import re
+import requests
+import json
+import wikipedia as wiki
+from bs4 import BeautifulSoup
+from urllib.request import urlopen
+from unidecode import unidecode
+from urllib.parse import unquote
 from streamlit.logger import get_logger
 LOGGER = get_logger(__name__)
 
@@ -37,8 +42,35 @@ def getCountryCoords(country):
   if location:
       return location.longitude, location.latitude
   else:
-      print(f"Coordinates not found for '{location_string}'.")
+      print(f"Coordinates not found for '{country}'.")
       return None
+  
+def cleanup(wiki_title):
+    try:
+        return unquote(wiki_title, errors='strict')
+    except UnicodeDecodeError:
+        return unquote(wiki_title, encoding='latin-1')
+  
+# def getWikiImage(url): # Different version used for Constructors Wiki page
+#     wiki_title = url.split("/")[-1]
+#     wiki_title = cleanup(wiki_title)
+#     wiki_title = wiki_title.replace("_", " ")
+#     wiki_title = wiki_title.replace("#", " ")
+#     if wiki_title == "Las Vegas Grand Prix Circuit": #Special condition for Las Vegas Grand Prix
+#       wiki_title = "Las Vegas Strip Circuit"
+    
+#       page=wiki.page(wiki_title,auto_suggest=False)
+#     #page = wiki.page(wiki_title, auto_suggest=False)
+#     # soup = BeautifulSoup(page.html(), 'html.parser')
+
+#     # main_image = soup.select_one(".infobox-image img")
+
+#     # if main_image:
+#     #   main_image_url = main_image.get('src')
+#     # else:
+#     #     main_image_url = None
+
+#     # return main_image_url
 
 def displaySeasonSchedule():
   currentSeasonEvents = getSeason(datetime.datetime.now().year)
@@ -86,25 +118,32 @@ def displaySeasonSchedule():
         cardLabel = event["OfficialEventName"] + " " + country.flag
       
       with st.expander(cardLabel):
-        st.markdown(f'''
-        **{country.flag} {event["EventName"]}** - Round {event["RoundNumber"]}\n
-        **Location:** {circuitName} - {event["Location"]}, {event["Country"]}\n
-        ''')
+        col1, col2 = st.columns(2)
+        
+        with col1:
+          st.markdown(f'''
+          **{country.flag} {event["EventName"]}** - Round {event["RoundNumber"]}\n
+          **Location:** {circuitName} - {event["Location"]}, {event["Country"]}\n
+          ''')
 
-        if pd.isna(event["Session1Date"]) is not True:       
-          st.markdown(f'''**{event["Session1"]}:** {event["Session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
+          if pd.isna(event["Session1Date"]) is not True:       
+            st.markdown(f'''**{event["Session1"]}:** {event["Session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
-        if pd.isna(event["Session2Date"]) is not True:       
-          st.markdown(f'''**{event["Session2"]}:** {event["Session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
+          if pd.isna(event["Session2Date"]) is not True:       
+            st.markdown(f'''**{event["Session2"]}:** {event["Session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
-        if pd.isna(event["Session3Date"]) is not True:       
-          st.markdown(f'''**{event["Session3"]}:** {event["Session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
+          if pd.isna(event["Session3Date"]) is not True:       
+            st.markdown(f'''**{event["Session3"]}:** {event["Session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
-        if pd.isna(event["Session4Date"]) is not True:       
-          st.markdown(f'''**{event["Session4"]}:** {event["Session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
+          if pd.isna(event["Session4Date"]) is not True:       
+            st.markdown(f'''**{event["Session4"]}:** {event["Session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
-        if pd.isna(event["Session5Date"]) is not True:       
-          st.markdown(f'''**{event["Session5"]}:** {event["Session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
+          if pd.isna(event["Session5Date"]) is not True:       
+            st.markdown(f'''**{event["Session5"]}:** {event["Session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
+
+        with col2:
+          #st.image(getWikiImage(circuitUrl))
+          #getWikiImage(circuitUrl)
 
 def displayDriverCurrentStandings():
   with st.spinner('Fetching data...'):
@@ -223,11 +262,7 @@ def displayWDCPrediction():
 def run():
   st.write("# Welcome to Formula Dash! 🏎️")
   st.divider()
-  
-  st.header(f"{datetime.datetime.now().year} Season Schedule")
-  displaySeasonSchedule()
-  st.divider()
-  
+
   st.header(f"{datetime.datetime.now().year} Season Standings")
   with st.expander("Current Season Standings"):
     tab1, tab2 = st.tabs(["Drivers", "Constructors"])
@@ -237,19 +272,22 @@ def run():
     with tab2:
       st.header("Constructors Standings")
       displayConstructorCurrentStandings()
-  st.divider()
-  
-  st.header("World Driver's Championship Prediction")
+
   with st.expander("Championship Prediction"):
-    st.markdown(f'''Who can still win the World Driver's Championship?''')
+    st.markdown(f'''Who can still win the **World Driver's Championship?**''')
     displayWDCPrediction()
+  st.divider()
+
+  st.header(f"{datetime.datetime.now().year} Season Schedule")
+  displaySeasonSchedule()
+
 
   #Sidebar for Anchor links
   st.sidebar.markdown(f'''
   # Jump to
-  - [Season Schedule](#{datetime.datetime.now().year}-season-schedule)
   - [Season Standings](#{datetime.datetime.now().year}-season-standings)
   - [WDC Prediction](#world-driver-s-championship-prediction)
+  - [Season Schedule](#{datetime.datetime.now().year}-season-schedule)
   ''', unsafe_allow_html=True)
     
 
