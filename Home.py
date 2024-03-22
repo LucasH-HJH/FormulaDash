@@ -281,9 +281,6 @@ def displayWDCPrediction():
 
 def run():
   st.write("# Welcome to Formula Dash! 🏎️")
-  st.page_link("pages/3_About Formula Dash.py", label="Click here to learn more about this project", icon="ℹ️",use_container_width=True)
-  st.markdown('''Formula Dash is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V.''')
-  st.divider()
 
   st.header(f"{datetime.datetime.now().year} Season Standings")
   with st.expander("Current Season Standings"):
