@@ -638,5 +638,6 @@ def run():
 st.set_page_config(page_title="Session Viewer - Formula Dash", page_icon="🏁")
 st.markdown("# Session Viewer")
 st.write("""View specific session details here by selecting the Season, Event, and Session.""")
+st.info('Data prior to 2024 may be unstable. Fetching may take a few minutes for uncached data.', icon="ℹ️")
 
 run()

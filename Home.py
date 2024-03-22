@@ -10,9 +10,6 @@ import time
 from timple.timedelta import strftimedelta
 import pycountry as pyc
 from geopy.geocoders import Nominatim
-# import pydeck as pdk
-# import folium
-# from streamlit_folium import st_folium
 import streamlit as st
 import fastf1
 import fastf1.plotting
@@ -50,27 +47,48 @@ def cleanup(wiki_title):
         return unquote(wiki_title, errors='strict')
     except UnicodeDecodeError:
         return unquote(wiki_title, encoding='latin-1')
-  
-# def getWikiImage(url): # Different version used for Constructors Wiki page
-#     wiki_title = url.split("/")[-1]
-#     wiki_title = cleanup(wiki_title)
-#     wiki_title = wiki_title.replace("_", " ")
-#     wiki_title = wiki_title.replace("#", " ")
-#     if wiki_title == "Las Vegas Grand Prix Circuit": #Special condition for Las Vegas Grand Prix
-#       wiki_title = "Las Vegas Strip Circuit"
     
-#       page=wiki.page(wiki_title,auto_suggest=False)
-#     #page = wiki.page(wiki_title, auto_suggest=False)
-#     # soup = BeautifulSoup(page.html(), 'html.parser')
+def get_wiki_info(url):
 
-#     # main_image = soup.select_one(".infobox-image img")
+    # Extract the page title from the Wikipedia URL
+    wiki_title = url.split("/")[-1]
+    wiki_title = cleanup(wiki_title)  # Assuming cleanup function handles encoding
 
-#     # if main_image:
-#     #   main_image_url = main_image.get('src')
-#     # else:
-#     #     main_image_url = None
+    # Base URL for Wikipedia page
+    base_url = "https://en.wikipedia.org/wiki/"
 
-#     # return main_image_url
+    # Send request to Wikipedia page
+    response = requests.get(f"{base_url}{wiki_title}")
+
+    # Check for successful response
+    if response.status_code != 200:
+        print(f"Error: Failed to access page {url} (status code: {response.status_code})")
+        return None
+
+    # Parse the HTML content
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    # Select all images within the infobox
+    infobox_images = soup.select(".infobox-image img")
+
+    # Check if there are any images
+    if not infobox_images:
+        return None
+
+    # Handle single image case
+    if len(infobox_images) == 1 or wiki_title == "Circuit_de_Monaco":
+        main_image_url = infobox_images[0].get('src')
+    # Handle multiple images (return second image)
+    else:
+        main_image_url = infobox_images[1].get('src')
+
+    # Handle relative URLs (optional)
+    if main_image_url.startswith("//"):
+        main_image_url = f"https:{main_image_url}"
+    elif not main_image_url.startswith("http"):
+        main_image_url = f"{base_url}{main_image_url}"
+
+    return main_image_url
 
 def displaySeasonSchedule():
   currentSeasonEvents = getSeason(datetime.datetime.now().year)
@@ -142,8 +160,10 @@ def displaySeasonSchedule():
             st.markdown(f'''**{event["Session5"]}:** {event["Session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
         with col2:
-          #st.image(getWikiImage(circuitUrl))
-          #getWikiImage(circuitUrl)
+          if event["EventFormat"] != "testing":
+            st.image(get_wiki_info(circuitUrl))
+            #print(circuitUrl)
+            #print(get_wiki_info(circuitUrl))
 
 def displayDriverCurrentStandings():
   with st.spinner('Fetching data...'):
@@ -279,8 +299,8 @@ def run():
   st.divider()
 
   st.header(f"{datetime.datetime.now().year} Season Schedule")
+  st.info("Images may hard to view in Dark Mode. Switch to Light Mode for a better viewing experience.", icon="ℹ️")
   displaySeasonSchedule()
-
 
   #Sidebar for Anchor links
   st.sidebar.markdown(f'''

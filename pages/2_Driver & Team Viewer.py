@@ -41,7 +41,7 @@ def getCountryFromNationality(nationality):
                 f.write(data)
 
             # Process the downloaded CSV data
-            with open(temp_filename, "r") as f:
+            with open(temp_filename, "r", encoding="utf-8") as f:
                 reader = csv.reader(f)
                 data = list(reader)  # Convert to a list for easier processing
                 
@@ -392,6 +392,7 @@ def run():
                 constructorsNameList.append(teamName)
             selectedConstructor = st.selectbox('Team',constructorsNameList, index=None, placeholder="Select Team")
             st.divider()
+            st.info("Images may hard to view in Dark Mode. Switch to Light Mode for a better viewing experience.", icon="ℹ️")
             col1, col2 = st.columns(2)
             
             for team in constructorsList:
