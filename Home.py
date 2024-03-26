@@ -16,9 +16,7 @@ import fastf1.plotting
 from fastf1.core import Laps
 from fastf1.ergast import Ergast # Will be deprecated post 2024
 ergast = Ergast()
-import re
 import requests
-import json
 import wikipedia as wiki
 from bs4 import BeautifulSoup
 from urllib.request import urlopen
@@ -32,81 +30,76 @@ def getSeason(year):
   events = season.to_records(list)
   return events
 
-def getCountryCoords(country):
-  geolocator = Nominatim(user_agent="my_app")
-  location = geolocator.geocode(country)
+# def getCountryCoords(country):
+#   geolocator = Nominatim(user_agent="my_app")
+#   location = geolocator.geocode(country)
 
-  if location:
-      return location.longitude, location.latitude
-  else:
-      print(f"Coordinates not found for '{country}'.")
-      return None
+#   if location:
+#       return location.longitude, location.latitude
+#   else:
+#       print(f"Coordinates not found for '{country}'.")
+#       return None
   
-def cleanup(wiki_title):
-    try:
-        return unquote(wiki_title, errors='strict')
-    except UnicodeDecodeError:
-        return unquote(wiki_title, encoding='latin-1')
+# def cleanup(wiki_title):
+#     try:
+#         return unquote(wiki_title, errors='strict')
+#     except UnicodeDecodeError:
+#         return unquote(wiki_title, encoding='latin-1')
     
-def get_wiki_info(url):
+# def get_wiki_info(url):
 
-    # Extract the page title from the Wikipedia URL
-    wiki_title = url.split("/")[-1]
-    wiki_title = cleanup(wiki_title)  # Assuming cleanup function handles encoding
+#     # Extract the page title from the Wikipedia URL
+#     wiki_title = url.split("/")[-1]
+#     wiki_title = cleanup(wiki_title)  # Assuming cleanup function handles encoding
 
-    # Base URL for Wikipedia page
-    base_url = "https://en.wikipedia.org/wiki/"
+#     # Base URL for Wikipedia page
+#     base_url = "https://en.wikipedia.org/wiki/"
 
-    # Send request to Wikipedia page
-    response = requests.get(f"{base_url}{wiki_title}")
+#     # Send request to Wikipedia page
+#     response = requests.get(f"{base_url}{wiki_title}")
 
-    # Check for successful response
-    if response.status_code != 200:
-        print(f"Error: Failed to access page {url} (status code: {response.status_code})")
-        return None
+#     # Check for successful response
+#     if response.status_code != 200:
+#         print(f"Error: Failed to access page {url} (status code: {response.status_code})")
+#         return None
 
-    # Parse the HTML content
-    soup = BeautifulSoup(response.content, 'html.parser')
+#     # Parse the HTML content
+#     soup = BeautifulSoup(response.content, 'html.parser')
 
-    # Select all images within the infobox
-    infobox_images = soup.select(".infobox-image img")
+#     # Select all images within the infobox
+#     infobox_images = soup.select(".infobox-image img")
 
-    # Check if there are any images
-    if not infobox_images:
-        return None
+#     # Check if there are any images
+#     if not infobox_images:
+#         return None
 
-    # Handle single image case
-    if len(infobox_images) == 1 or wiki_title == "Circuit_de_Monaco":
-        main_image_url = infobox_images[0].get('src')
-    # Handle multiple images (return second image)
-    else:
-        main_image_url = infobox_images[1].get('src')
+#     # Handle single image case
+#     if len(infobox_images) == 1 or wiki_title == "Circuit_de_Monaco":
+#         main_image_url = infobox_images[0].get('src')
+#     # Handle multiple images (return second image)
+#     else:
+#         main_image_url = infobox_images[1].get('src')
 
-    # Handle relative URLs (optional)
-    if main_image_url.startswith("//"):
-        main_image_url = f"https:{main_image_url}"
-    elif not main_image_url.startswith("http"):
-        main_image_url = f"{base_url}{main_image_url}"
+#     # Handle relative URLs (optional)
+#     if main_image_url.startswith("//"):
+#         main_image_url = f"https:{main_image_url}"
+#     elif not main_image_url.startswith("http"):
+#         main_image_url = f"{base_url}{main_image_url}"
 
-    return main_image_url
+#     return main_image_url
 
-def displaySeasonSchedule():
-  currentSeasonEvents = getSeason(datetime.datetime.now().year)
-  currentSeasonRaceSchedule = ergast.get_race_schedule(season=datetime.datetime.now().year)
-  currentSeasonCircuits = ergast.get_circuits(season=datetime.datetime.now().year)
-  sessionDetails = ""
-  countryData = []
-
+def displayCurrentSeasonSchedule():
   with st.spinner('Fetching data...'):
+    col1, col2 = st.columns(2, gap="Medium")
+    currentSeasonEvents = getSeason(datetime.datetime.now().year)
+    currentSeasonRaceSchedule = ergast.get_race_schedule(season=datetime.datetime.now().year)
+    currentSeasonCircuits = ergast.get_circuits(season=datetime.datetime.now().year)
+    currentSeasonScheduleDict = {}
+
     # Display season schedule
     for event in currentSeasonEvents:
-      cardLabel = ""
+      event_data = {}
       countryName = ""
-      circuitName = ""
-      circuitLat = ""
-      circuitLon = ""
-      circuitUrl = ""
-      circuitImage = ""
       
       # Standardize country name
       if event["Country"] == "Great Britain":
@@ -123,47 +116,83 @@ def displaySeasonSchedule():
           circuitId = row["circuitId"]
           for index, row in currentSeasonCircuits.iterrows():
             if circuitId == row["circuitId"]:
-              circuitName = row["circuitName"]
-              circuitLat = row["lat"]
-              circuitLon = row["long"]
-              circuitUrl = row["circuitUrl"]
-              break
+              # Add event_data to currentSeasonScheduleDict
+              event_data["officialEventName"] = event["OfficialEventName"]
+              event_data["roundNumber"] = event["RoundNumber"]
+              event_data["location"] = event["Location"]
+              event_data["circuitName"] = row["circuitName"]
+              event_data["circuitLat"] = row["lat"]
+              event_data["circuitLon"] = row["long"]
+              event_data["circuitUrl"] = row["circuitUrl"]
+              event_data["country"] = country
+              event_data["eventDate"] = [event["EventDate"]]
+              event_data["eventFormat"] = [event["EventFormat"]]
+              event_data["session1"] = event["Session1"]
+              event_data["session2"] = event["Session2"]
+              event_data["session3"] = event["Session3"]
+              event_data["session4"] = event["Session4"]
+              event_data["session5"] = event["Session5"]
+              event_data["session1Date"] = event["Session1Date"]
+              event_data["session2Date"] = event["Session2Date"]
+              event_data["session3Date"] = event["Session3Date"]
+              event_data["session4Date"] = event["Session4Date"]
+              event_data["session5Date"] = event["Session5Date"]
+              currentSeasonScheduleDict[event["EventName"]] = event_data
 
-      # Check if race over
-      if pd.to_datetime(event["EventDate"]) < datetime.datetime.today():
-        cardLabel = event["OfficialEventName"] + " " + country.flag + " - Completed"
+    print(currentSeasonScheduleDict)
+
+    # Display each event in currentSeasonScheduleDict
+    for i, event in enumerate(currentSeasonScheduleDict.values()):
+      country = event["country"]
+      if pd.to_datetime(event["eventDate"]) < datetime.datetime.today():
+        cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag} - 🏁'''
       else:
-        cardLabel = event["OfficialEventName"] + " " + country.flag
+        cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag}'''
       
       with st.expander(cardLabel):
-        col1, col2 = st.columns(2)
+        st.markdown(f'''**Location:** {event["circuitName"]} - {event["location"]}, {country.name}\n''')
         
-        with col1:
-          st.markdown(f'''
-          **{country.flag} {event["EventName"]}** - Round {event["RoundNumber"]}\n
-          **Location:** {circuitName} - {event["Location"]}, {event["Country"]}\n
-          ''')
+        if hasattr(event["session1Date"], 'tzinfo'):       
+          st.markdown(f'''**{event["session1"]}:** {event["session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
+        if hasattr(event["session2Date"], 'tzinfo'):       
+          st.markdown(f'''**{event["session2"]}:** {event["session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
+        if hasattr(event["session3Date"], 'tzinfo'):       
+          st.markdown(f'''**{event["session3"]}:** {event["session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
+        if hasattr(event["session4Date"], 'tzinfo'):       
+          st.markdown(f'''**{event["session4"]}:** {event["session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
+        if hasattr(event["session5Date"], 'tzinfo'):       
+          st.markdown(f'''**{event["session5"]}:** {event["session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
+              
 
-          if pd.isna(event["Session1Date"]) is not True:       
-            st.markdown(f'''**{event["Session1"]}:** {event["Session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
+      # # Check if race over
+      # if pd.to_datetime(event["EventDate"]) < datetime.datetime.today():
+      #   cardLabel = f'''Round {event["RoundNumber"]} - {event["OfficialEventName"]} {country.flag} - 🏁'''
+      # else:
+      #   cardLabel = f'''Round {event["RoundNumber"]} - {event["OfficialEventName"]} {country.flag}'''
+      
+      # with col:
+      #   with st.expander(cardLabel):
+      #     # col1, col2 = st.columns(2)
+          
+      #     # with col1:
+      #       st.markdown(f'''
+      #       **Location:** {circuitName} - {event["Location"]}, {event["Country"]}\n
+      #       ''')
 
-          if pd.isna(event["Session2Date"]) is not True:       
-            st.markdown(f'''**{event["Session2"]}:** {event["Session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
+      #       if pd.isna(event["Session1Date"]) is not True:       
+      #         st.markdown(f'''**{event["Session1"]}:** {event["Session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
-          if pd.isna(event["Session3Date"]) is not True:       
-            st.markdown(f'''**{event["Session3"]}:** {event["Session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
+      #       if pd.isna(event["Session2Date"]) is not True:       
+      #         st.markdown(f'''**{event["Session2"]}:** {event["Session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
-          if pd.isna(event["Session4Date"]) is not True:       
-            st.markdown(f'''**{event["Session4"]}:** {event["Session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
+      #       if pd.isna(event["Session3Date"]) is not True:       
+      #         st.markdown(f'''**{event["Session3"]}:** {event["Session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
-          if pd.isna(event["Session5Date"]) is not True:       
-            st.markdown(f'''**{event["Session5"]}:** {event["Session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
+      #       if pd.isna(event["Session4Date"]) is not True:       
+      #         st.markdown(f'''**{event["Session4"]}:** {event["Session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
-        with col2:
-          if event["EventFormat"] != "testing":
-            st.image(get_wiki_info(circuitUrl))
-            #print(circuitUrl)
-            #print(get_wiki_info(circuitUrl))
+      #       if pd.isna(event["Session5Date"]) is not True:       
+      #         st.markdown(f'''**{event["Session5"]}:** {event["Session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
 def displayDriverCurrentStandings():
   with st.spinner('Fetching data...'):
@@ -291,15 +320,17 @@ def run():
     with tab2:
       st.header("Constructors Standings")
       displayConstructorCurrentStandings()
-
+        
+  st.header(f"{datetime.datetime.now().year} Championship Prediction")
   with st.expander("Championship Prediction"):
     st.markdown(f'''Who can still win the **World Driver's Championship?**''')
     displayWDCPrediction()
+  
   st.divider()
 
   st.header(f"{datetime.datetime.now().year} Season Schedule")
-  st.info("Images may hard to view in Dark Mode. Switch to Light Mode for a better viewing experience.", icon="ℹ️")
-  displaySeasonSchedule()
+  displayCurrentSeasonSchedule()
+
   st.divider()
 
   #Sidebar for Anchor links
