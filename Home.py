@@ -1,24 +1,12 @@
-import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib import colormaps
-from matplotlib.collections import LineCollection
-import seaborn as sns
 import pandas as pd
 import datetime
-import time
 from timple.timedelta import strftimedelta
 import pycountry as pyc
-from geopy.geocoders import Nominatim
 import streamlit as st
 import fastf1
 import fastf1.plotting
-from fastf1.core import Laps
 from fastf1.ergast import Ergast # Will be deprecated post 2024
 ergast = Ergast()
-import requests
-import wikipedia as wiki
-from bs4 import BeautifulSoup
 from urllib.request import urlopen
 from unidecode import unidecode
 from urllib.parse import unquote
@@ -29,16 +17,6 @@ def getSeason(year):
   season = fastf1.get_event_schedule(year)
   events = season.to_records(list)
   return events
-
-# def getCountryCoords(country):
-#   geolocator = Nominatim(user_agent="my_app")
-#   location = geolocator.geocode(country)
-
-#   if location:
-#       return location.longitude, location.latitude
-#   else:
-#       print(f"Coordinates not found for '{country}'.")
-#       return None
   
 # def cleanup(wiki_title):
 #     try:
@@ -118,6 +96,7 @@ def displayCurrentSeasonSchedule():
             if circuitId == row["circuitId"]:
               # Add event_data to currentSeasonScheduleDict
               event_data["officialEventName"] = event["OfficialEventName"]
+              event_data["eventName"] = event["EventName"]
               event_data["roundNumber"] = event["RoundNumber"]
               event_data["location"] = event["Location"]
               event_data["circuitName"] = row["circuitName"]
@@ -139,17 +118,31 @@ def displayCurrentSeasonSchedule():
               event_data["session5Date"] = event["Session5Date"]
               currentSeasonScheduleDict[event["EventName"]] = event_data
 
-    print(currentSeasonScheduleDict)
+    #print(currentSeasonScheduleDict)
 
     # Display each event in currentSeasonScheduleDict
+    currentRound = ergast.get_race_results(season="current",round="last")
+    nextRound = currentRound.description["round"] + 1
+
     for i, event in enumerate(currentSeasonScheduleDict.values()):
       country = event["country"]
-      if pd.to_datetime(event["eventDate"]) < datetime.datetime.today():
-        cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag} - 🏁'''
-      else:
-        cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag}'''
       
-      with st.expander(cardLabel):
+      # Completed event
+      if pd.to_datetime(event["eventDate"]) < datetime.datetime.today(): 
+        cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag} - 🏁'''
+        cardExpand = False
+
+      # Not completed and is next event
+      elif pd.to_datetime(event["eventDate"]) > datetime.datetime.today() and event["roundNumber"] == nextRound.item():
+        cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag}'''
+        cardExpand = True
+      
+      # Not completed and is not next event
+      else: 
+        cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag}'''
+        cardExpand = False
+      
+      with st.expander(cardLabel,expanded=cardExpand):
         st.markdown(f'''**Location:** {event["circuitName"]} - {event["location"]}, {country.name}\n''')
         
         if hasattr(event["session1Date"], 'tzinfo'):       
@@ -162,37 +155,6 @@ def displayCurrentSeasonSchedule():
           st.markdown(f'''**{event["session4"]}:** {event["session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
         if hasattr(event["session5Date"], 'tzinfo'):       
           st.markdown(f'''**{event["session5"]}:** {event["session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
-              
-
-      # # Check if race over
-      # if pd.to_datetime(event["EventDate"]) < datetime.datetime.today():
-      #   cardLabel = f'''Round {event["RoundNumber"]} - {event["OfficialEventName"]} {country.flag} - 🏁'''
-      # else:
-      #   cardLabel = f'''Round {event["RoundNumber"]} - {event["OfficialEventName"]} {country.flag}'''
-      
-      # with col:
-      #   with st.expander(cardLabel):
-      #     # col1, col2 = st.columns(2)
-          
-      #     # with col1:
-      #       st.markdown(f'''
-      #       **Location:** {circuitName} - {event["Location"]}, {event["Country"]}\n
-      #       ''')
-
-      #       if pd.isna(event["Session1Date"]) is not True:       
-      #         st.markdown(f'''**{event["Session1"]}:** {event["Session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
-
-      #       if pd.isna(event["Session2Date"]) is not True:       
-      #         st.markdown(f'''**{event["Session2"]}:** {event["Session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
-
-      #       if pd.isna(event["Session3Date"]) is not True:       
-      #         st.markdown(f'''**{event["Session3"]}:** {event["Session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
-
-      #       if pd.isna(event["Session4Date"]) is not True:       
-      #         st.markdown(f'''**{event["Session4"]}:** {event["Session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
-
-      #       if pd.isna(event["Session5Date"]) is not True:       
-      #         st.markdown(f'''**{event["Session5"]}:** {event["Session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
 def displayDriverCurrentStandings():
   with st.spinner('Fetching data...'):
@@ -310,22 +272,17 @@ def displayWDCPrediction():
 
 def run():
   st.write("# Welcome to Formula Dash! 🏎️")
-
-  st.header(f"{datetime.datetime.now().year} Season Standings")
-  with st.expander("Current Season Standings"):
-    tab1, tab2 = st.tabs(["Drivers", "Constructors"])
+  #TODO: ADD NEXT EVENT
+  
+  with st.expander("Current Season Standings",expanded=True):
+    tab1, tab2, tab3 = st.tabs(["Drivers", "Constructors", "Championship Prediction"])
     with tab1:
-      st.header("Drivers Standings")
       displayDriverCurrentStandings()
     with tab2:
-      st.header("Constructors Standings")
       displayConstructorCurrentStandings()
-        
-  st.header(f"{datetime.datetime.now().year} Championship Prediction")
-  with st.expander("Championship Prediction"):
-    st.markdown(f'''Who can still win the **World Driver's Championship?**''')
-    displayWDCPrediction()
-  
+    with tab3:
+      displayWDCPrediction()
+
   st.divider()
 
   st.header(f"{datetime.datetime.now().year} Season Schedule")
