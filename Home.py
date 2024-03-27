@@ -1,5 +1,6 @@
 import pandas as pd
 import datetime
+from datetime import date
 from timple.timedelta import strftimedelta
 import pycountry as pyc
 import streamlit as st
@@ -66,7 +67,7 @@ def getSeason(year):
 
 #     return main_image_url
 
-def displayCurrentSeasonSchedule():
+def getCurrentSeasonSchedule():
   with st.spinner('Fetching data...'):
     col1, col2 = st.columns(2, gap="Medium")
     currentSeasonEvents = getSeason(datetime.datetime.now().year)
@@ -119,8 +120,10 @@ def displayCurrentSeasonSchedule():
               currentSeasonScheduleDict[event["EventName"]] = event_data
 
     #print(currentSeasonScheduleDict)
+    return currentSeasonScheduleDict
 
-    # Display each event in currentSeasonScheduleDict
+def displayCurrentSeasonSchedule(currentSeasonScheduleDict):
+  # Display each event in currentSeasonScheduleDict
     currentRound = ergast.get_race_results(season="current",round="last")
     nextRound = currentRound.description["round"] + 1
 
@@ -272,8 +275,9 @@ def displayWDCPrediction():
 
 def run():
   st.write("# Welcome to Formula Dash! 🏎️")
-  #TODO: ADD NEXT EVENT
-  
+  currentSeasonScheduleDict = getCurrentSeasonSchedule()
+
+  st.header(f"{datetime.datetime.now().year} Season Standings")
   with st.expander("Current Season Standings",expanded=True):
     tab1, tab2, tab3 = st.tabs(["Drivers", "Constructors", "Championship Prediction"])
     with tab1:
@@ -286,7 +290,7 @@ def run():
   st.divider()
 
   st.header(f"{datetime.datetime.now().year} Season Schedule")
-  displayCurrentSeasonSchedule()
+  displayCurrentSeasonSchedule(currentSeasonScheduleDict)
 
   st.divider()
 
@@ -294,7 +298,6 @@ def run():
   st.sidebar.markdown(f'''
   # Jump to
   - [Season Standings](#{datetime.datetime.now().year}-season-standings)
-  - [WDC Prediction](#world-driver-s-championship-prediction)
   - [Season Schedule](#{datetime.datetime.now().year}-season-schedule)
   ''', unsafe_allow_html=True)
     
