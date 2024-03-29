@@ -16,7 +16,8 @@ from fastf1.core import Laps
 def getSeason(year):
     season = fastf1.get_event_schedule(year)
     events = season.to_records(list)
-    return events
+    filteredEvents = [event for event in events if event["EventFormat"] != "testing"]
+    return filteredEvents
 
 def getSessions(event):
     eventsSessionsList = []
@@ -45,12 +46,6 @@ def getSessionTimings(event):
 def getSessionDetails(year,event,session):
     sessionDetails = fastf1.get_session(year, event, session)
     sessionDetails.load()
-    return sessionDetails
-
-def getTestingSessionDetails(year,event,session):
-    sessionDetails = fastf1.get_testing_session(year, event, session)
-    sessionDetails.load()
-    print(sessionDetails)
     return sessionDetails
 
 def displaySessionDetails(sessionDetails, sessionName):
@@ -394,8 +389,19 @@ def displayTeamPaceComparison(sessionDetails):
         .index
     )
 
-    # make a color palette associating team names to hex codes
-    team_palette = {team: fastf1.plotting.team_color(team) for team in team_order}
+    team_palette = {}
+    try:
+        for team in team_order:
+            try:
+                team_color = fastf1.plotting.team_color(team)  # Get the team color
+                team_palette[team] = team_color  # Add to the dictionary only if successful
+            except Exception as err:
+                print(f"Error for team '{team}': {err}")  # Print informative error message
+                
+                if team == "AlphaTauri":
+                    team_palette[team] = "#2b4562" #Hard-coded Alphatauri colour due to unknown reason
+    except Exception as err:
+        print(f"General error: {err}")
 
     fig, ax = plt.subplots(figsize=(15, 10))
     sns.boxplot(
@@ -425,7 +431,6 @@ def displayQualiResults(sessionDetails):
     drivers = pd.unique(sessionDetails.laps['Driver'])
     list_fastest_laps = list()
 
-    print(sessionDetails.laps.pick_drivers("ZHO").pick_fastest())
     for drv in drivers:
         drvs_fastest_lap = sessionDetails.laps.pick_driver(drv).pick_fastest()
         if pd.isna(drvs_fastest_lap['LapTime']): #CHECK FOR NONE IN THE FUTURE
@@ -442,9 +447,12 @@ def displayQualiResults(sessionDetails):
 
     team_colors = list()
     for index, lap in fastest_laps.iterlaps():
-        color = fastf1.plotting.team_color(lap['Team'])
+        if lap['Team'] == "AlphaTauri": #Hard-coded Alphatauri colour due to unknown reason
+            color = "#2b4562"
+        else:
+            color = fastf1.plotting.team_color(lap['Team'])
         team_colors.append(color)
-
+        
     fig, ax = plt.subplots()
     ax.barh(fastest_laps.index, fastest_laps['LapTimeDelta'],color=team_colors, edgecolor='grey')
     ax.set_yticks(fastest_laps.index)
@@ -488,8 +496,6 @@ def run():
         )
 
     if selectedSeason != None:
-        if int(selectedSeason) != 2024 :
-            st.info('Data prior to 2024 may be unstable. Fetching may take a few minutes for uncached data.', icon="ℹ️")
         events = getSeason(int(selectedSeason))
         for event in events:
             eventList.append((event["EventName"]))
@@ -520,21 +526,7 @@ def run():
     try:
         if selectedSeason and selectedEvent and selectedSession != None:
             with st.spinner('Fetching data...'):
-
-                if selectedEvent == "Pre-Season Testing":
-                    
-                    testSessionNo = 0        
-                    if selectedSession == "Practice 1":
-                        testSessionNo = 1
-                    elif selectedSession == "Practice 2":
-                        testSessionNo = 2
-                    else:
-                        testSessionNo = 3
-                    sessionDetails = getTestingSessionDetails(int(selectedSeason),1,testSessionNo)
-                
-                else:
-                    sessionDetails = getSessionDetails(int(selectedSeason),selectedEvent,selectedSession)
-                
+                sessionDetails = getSessionDetails(int(selectedSeason),selectedEvent,selectedSession)
                 sessionDateTime = ""
                 
                 if eventFormat == "sprint_shootout":
@@ -560,17 +552,9 @@ def run():
                     elif selectedSession == "Race":
                         sessionDateTime = sessionTimings[4]
 
-                with st.expander("Session Results"):
-                    st.header("Session Results")
-                    
-                    #st.write(selectedSession," results for the ", selectedSeason, selectedEvent, "(",sessionDateTime.strftime('%a %-d %b %Y %H:%M:%S, %Z'),")")
-                    
-                    if selectedEvent == "Pre-Season Testing":
-                        st.info('Pre-Season Testing data is not in order of fastest times.', icon="ℹ️")
-                    elif selectedSession in ["Practice 1","Practice 2","Practice 3"]:
+                with st.expander("Session Results"):                   
+                    if selectedSession in ["Practice 1","Practice 2","Practice 3"]:
                         st.info('Practice sessions do not include times.', icon="ℹ️")
-                    elif selectedSession in ["Race","Sprint"]:
-                        st.info('Times after the first row is the gap from the session leader.', icon="ℹ️")
                     #Session Results
                     df = displaySessionDetails(sessionDetails, selectedSession)
                 
@@ -606,7 +590,6 @@ def run():
 
                 if selectedSession in ["Qualifying"]: #disallowed Sprint Shootout cause of data diff issues
                     with st.expander("Qualifying Overview"):
-                        st.header("Qualifying Overview")
                         displayQualiResults(sessionDetails)
 
                 if selectedSession in ["Race","Sprint"]:
@@ -635,7 +618,7 @@ def run():
 
     except Exception as error:
         print("An exception occurred:", error)
-        st.error("Information is not available yet or does not exist.")
+        st.error("Some information is not available yet or does not exist.")
 
 st.set_page_config(page_title="Session Viewer - Formula Dash", page_icon="🏁")
 st.markdown("# Session Viewer")
