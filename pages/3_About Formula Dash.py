@@ -11,12 +11,13 @@ It has features such as:
 ''')
 st.divider()
 st.markdown('''## How was Formula Dash created?\n
-Formula Dash was created using the **Streamlit** framework. It also uses the **Fastf1** python module along with **Ergast API**.\n
+Formula Dash was created using the **Streamlit** framework. It also uses the **Fastf1** python module along with **Ergast API**. Thumbnails from **Wikipedia** pages were used for images.\n
 Most of the track-related visualizations were created through modifications of provided code in the FastF1 documentation.\n
 Resources used for this project:
 - [Streamlit](https://streamlit.io/)
 - [Fastf1](https://docs.fastf1.dev/)
 - [ErgastApi](https://ergast.com/mrd/)
+- [Wikipedia](https://www.wikipedia.org/)
 ''')
 st.divider()
 st.markdown('''## Frequently Asked Questions''')

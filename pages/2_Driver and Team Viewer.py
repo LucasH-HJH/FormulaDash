@@ -17,6 +17,7 @@ import requests
 import json
 import wikipedia as wiki
 from bs4 import BeautifulSoup
+from streamlit_extras.stylable_container import stylable_container
 from urllib.request import urlopen
 from unidecode import unidecode
 from urllib.parse import unquote
@@ -392,14 +393,28 @@ def run():
                 constructorsNameList.append(teamName)
             selectedConstructor = st.selectbox('Team',constructorsNameList, index=None, placeholder="Select Team")
             st.divider()
-            st.info("Images may hard to view in Dark Mode. Switch to Light Mode for a better viewing experience.", icon="ℹ️")
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns(2, gap="Medium")
             
             for team in constructorsList:
                 if selectedConstructor == team.get("constructorName"):
                     constructorCountryInfo = getCountryFromNationality(team["constructorNationality"])
                     with col1:
-                        st.image("https:" + getWikiImage(team["constructorUrl"]), width=300)
+                        with stylable_container(
+                            key="circuit_image_container",
+                            css_styles='''
+                            {
+                            background-color: white;
+                            border: 1px solid rgba(49, 51, 63, 0.2);
+                            border-radius: 0.5rem;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            color:black;
+                            }
+                            '''
+                        ):
+                            st.image("https:" + getWikiImage(team["constructorUrl"]), use_column_width="always")
+                        st.link_button("Go to Wikipedia Page", team["constructorUrl"], use_container_width=True)
                     
                     with col2:
                         teamDriversList = getConstructorDrivers(team["constructorName"])
@@ -464,19 +479,22 @@ def run():
                     
                     st.divider()
                     st.header("Team Summary")
-                    with st.expander("Career"):
-                        st.write(f'''**Constructors' Championships:** {teamWCC}\n''')
-                        st.write(f'''**Drivers' Championships:** {teamWDC}\n''')
-                        st.write(f'''**First Race Entry:** {teamFirstEntry}\n''')            
-                        st.write(f'''**Races Entered:** {teamRacesEntered}\n''')
-                        st.write(f'''**Wins:** {teamWins}\n''')
-                        st.write(f'''**Points:** {teamPoints}\n''')
-                        st.write(f'''**Podiums:** {teamPodiums}\n''')
-                        st.write(f'''**Pole Positions:** {teamPoles}\n''')
-                        st.write(f'''**Fastest Laps:** {teamFastestLaps}\n''')
-                    with st.expander("History"):
+                    with st.expander("Career", expanded=True):
+                        col1, col2 = st.columns(2, gap="Medium")
+                        with col1:
+                            st.write(f'''**Constructors' Championships:** {teamWCC}\n''')
+                            st.write(f'''**Drivers' Championships:** {teamWDC}\n''')
+                            st.write(f'''**First Race Entry:** {teamFirstEntry}\n''')            
+                            st.write(f'''**Races Entered:** {teamRacesEntered}\n''')
+
+                        with col2:
+                            st.write(f'''**Wins:** {teamWins}\n''')
+                            st.write(f'''**Points:** {teamPoints}\n''')
+                            st.write(f'''**Podiums:** {teamPodiums}\n''')
+                            st.write(f'''**Pole Positions:** {teamPoles}\n''')
+                            st.write(f'''**Fastest Laps:** {teamFastestLaps}\n''')
+                    with st.expander("History", expanded=True):
                         st.markdown(wiki.WikipediaPage(pageid=pageId).summary) # Display Summary of Team
-                    st.link_button("Go to Wikipedia Page", team["constructorUrl"], use_container_width=True)
 
 st.set_page_config(page_title="Driver/Team Viewer - Formula Dash", page_icon="👨‍🔧")
 st.markdown("# Driver/Team Viewer")
