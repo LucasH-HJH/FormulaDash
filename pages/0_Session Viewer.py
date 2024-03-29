@@ -484,13 +484,13 @@ def run():
     eventName=""
     sessionName=""
 
-    seasonsSince2021 = range(datetime.datetime(2021,1,1).year, datetime.datetime.now().year+1)
-    seasonsSince2021 = reversed(seasonsSince2021)
+    seasonsSince2019 = range(datetime.datetime(2019,1,1).year, datetime.datetime.now().year+1)
+    seasonsSince2019 = reversed(seasonsSince2019)
 
     with col1:
         selectedSeason = st.selectbox(
         "Season",
-        (seasonsSince2021),
+        (seasonsSince2019),
         index=None,
         placeholder="Select Season",
         )
@@ -559,7 +559,6 @@ def run():
                     df = displaySessionDetails(sessionDetails, selectedSession)
                 
                 with st.expander("Circuit Overview"):
-                    st.header("Circuit Overview")
                     circuitTab1, circuitTab2, circuitTab3, circuitTab4 = st.tabs(["Circuit Map", "Speed Heat Map", "Speed Graph", "Gear Changes"])
                     #Circuit Map
                     with circuitTab1:
@@ -576,7 +575,6 @@ def run():
 
                 if selectedSession in ["Race"]: #disallowed Sprint cause of data diff issues
                     with st.expander("Race Overview"):
-                        st.header("Race Overview")
                         raceTab1, raceTab2, raceTab3 = st.tabs(["Position Changes", "Tyre Strategies", "Team Pace"])
                         #Position Changes
                         with raceTab1:
