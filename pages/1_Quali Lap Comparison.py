@@ -41,7 +41,7 @@ def getDriversInSession(sessionDetails):
         driverList.update({(sessionDetails.get_driver(driver).FullName) : driver})
     return driverList
 
-def displayQualiLapComparison(sessionDetails1, driverDict1, selectedDriver1, sessionDetails2, driverDict2, selectedDriver2):
+def displayQualiLapComparison(sessionDetails1, selectedSeason1, driverDict1, selectedDriver1, sessionDetails2, selectedSeason2, driverDict2, selectedDriver2):
     fastf1.plotting.setup_mpl(misc_mpl_mods=False)
 
     selectedDriverAbbrv1 = ""
@@ -57,6 +57,9 @@ def displayQualiLapComparison(sessionDetails1, driverDict1, selectedDriver1, ses
         if name == selectedDriver2:
             selectedDriverAbbrv2 = abbrv
 
+    driver1PlotLabel = f"{selectedDriverAbbrv1} {selectedSeason1}"
+    driver2PlotLabel = f"{selectedDriverAbbrv2} {selectedSeason2}"
+
     driverLap1 = sessionDetails1.laps.pick_drivers(selectedDriverAbbrv1).pick_fastest()
     driverLap2 = sessionDetails2.laps.pick_drivers(selectedDriverAbbrv2).pick_fastest()
 
@@ -69,8 +72,8 @@ def displayQualiLapComparison(sessionDetails1, driverDict1, selectedDriver1, ses
     fig, ax = plt.subplots()
     #ax.plot(driverTel1['Distance'], driverTel1['Speed'], color=driver1Color, label=selectedDriverAbbrv1)
     #ax.plot(driverTel2['Distance'], driverTel2['Speed'], color=driver2Color, label=selectedDriverAbbrv2)
-    ax.plot(driverTel1['Distance'], driverTel1['Speed'], color="Yellow", label=selectedDriverAbbrv1)
-    ax.plot(driverTel2['Distance'], driverTel2['Speed'], color="Blue", label=selectedDriverAbbrv2)
+    ax.plot(driverTel1['Distance'], driverTel1['Speed'], color="Yellow", label=driver1PlotLabel)
+    ax.plot(driverTel2['Distance'], driverTel2['Speed'], color="Blue", label=driver2PlotLabel)
 
     ax.set_xlabel('Distance in m')
     ax.set_ylabel('Speed in km/h')
@@ -201,7 +204,7 @@ def run():
 
             if selectedDriver1 and selectedDriver2 != None:
                 st.divider()
-                displayQualiLapComparison(sessionDetails1, driverDict1, selectedDriver1, sessionDetails2, driverDict2, selectedDriver2)
+                displayQualiLapComparison(sessionDetails1, selectedSeason1, driverDict1, selectedDriver1, sessionDetails2, selectedSeason2, driverDict2, selectedDriver2)
 
 st.set_page_config(page_title="Quali Lap Comparison - Formula Dash", page_icon="⏱️")
 st.markdown("# Qualifying Lap Comparison")

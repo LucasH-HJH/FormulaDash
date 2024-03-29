@@ -1,29 +1,19 @@
-import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib import colormaps
-from matplotlib.collections import LineCollection
-import seaborn as sns
 import pandas as pd
 import datetime
-import time
+from datetime import date
 from timple.timedelta import strftimedelta
 import pycountry as pyc
-from geopy.geocoders import Nominatim
 import streamlit as st
 import fastf1
 import fastf1.plotting
-from fastf1.core import Laps
 from fastf1.ergast import Ergast # Will be deprecated post 2024
 ergast = Ergast()
-import re
 import requests
-import json
-import wikipedia as wiki
 from bs4 import BeautifulSoup
 from urllib.request import urlopen
 from unidecode import unidecode
 from urllib.parse import unquote
+from streamlit_extras.stylable_container import stylable_container
 from streamlit.logger import get_logger
 LOGGER = get_logger(__name__)
 
@@ -31,16 +21,6 @@ def getSeason(year):
   season = fastf1.get_event_schedule(year)
   events = season.to_records(list)
   return events
-
-def getCountryCoords(country):
-  geolocator = Nominatim(user_agent="my_app")
-  location = geolocator.geocode(country)
-
-  if location:
-      return location.longitude, location.latitude
-  else:
-      print(f"Coordinates not found for '{country}'.")
-      return None
   
 def cleanup(wiki_title):
     try:
@@ -76,7 +56,7 @@ def get_wiki_info(url):
         return None
 
     # Handle single image case
-    if len(infobox_images) == 1 or wiki_title == "Circuit_de_Monaco":
+    if len(infobox_images) == 1 or wiki_title == "Circuit_de_Monaco" or wiki_title == "Melbourne_Grand_Prix_Circuit":
         main_image_url = infobox_images[0].get('src')
     # Handle multiple images (return second image)
     else:
@@ -90,23 +70,18 @@ def get_wiki_info(url):
 
     return main_image_url
 
-def displaySeasonSchedule():
-  currentSeasonEvents = getSeason(datetime.datetime.now().year)
-  currentSeasonRaceSchedule = ergast.get_race_schedule(season=datetime.datetime.now().year)
-  currentSeasonCircuits = ergast.get_circuits(season=datetime.datetime.now().year)
-  sessionDetails = ""
-  countryData = []
-
+def getCurrentSeasonSchedule():
   with st.spinner('Fetching data...'):
+    col1, col2 = st.columns(2, gap="Medium")
+    currentSeasonEvents = getSeason(datetime.datetime.now().year)
+    currentSeasonRaceSchedule = ergast.get_race_schedule(season=datetime.datetime.now().year)
+    currentSeasonCircuits = ergast.get_circuits(season=datetime.datetime.now().year)
+    currentSeasonScheduleDict = {}
+
     # Display season schedule
     for event in currentSeasonEvents:
-      cardLabel = ""
+      event_data = {}
       countryName = ""
-      circuitName = ""
-      circuitLat = ""
-      circuitLon = ""
-      circuitUrl = ""
-      circuitImage = ""
       
       # Standardize country name
       if event["Country"] == "Great Britain":
@@ -123,47 +98,93 @@ def displaySeasonSchedule():
           circuitId = row["circuitId"]
           for index, row in currentSeasonCircuits.iterrows():
             if circuitId == row["circuitId"]:
-              circuitName = row["circuitName"]
-              circuitLat = row["lat"]
-              circuitLon = row["long"]
-              circuitUrl = row["circuitUrl"]
-              break
+              # Add event_data to currentSeasonScheduleDict
+              event_data["officialEventName"] = event["OfficialEventName"]
+              event_data["eventName"] = event["EventName"]
+              event_data["roundNumber"] = event["RoundNumber"]
+              event_data["location"] = event["Location"]
+              event_data["circuitName"] = row["circuitName"]
+              event_data["circuitLat"] = row["lat"]
+              event_data["circuitLon"] = row["long"]
+              event_data["circuitUrl"] = row["circuitUrl"]
+              event_data["country"] = country
+              event_data["eventDate"] = [event["EventDate"]]
+              event_data["eventFormat"] = [event["EventFormat"]]
+              event_data["session1"] = event["Session1"]
+              event_data["session2"] = event["Session2"]
+              event_data["session3"] = event["Session3"]
+              event_data["session4"] = event["Session4"]
+              event_data["session5"] = event["Session5"]
+              event_data["session1Date"] = event["Session1Date"]
+              event_data["session2Date"] = event["Session2Date"]
+              event_data["session3Date"] = event["Session3Date"]
+              event_data["session4Date"] = event["Session4Date"]
+              event_data["session5Date"] = event["Session5Date"]
+              currentSeasonScheduleDict[event["EventName"]] = event_data
 
-      # Check if race over
-      if pd.to_datetime(event["EventDate"]) < datetime.datetime.today():
-        cardLabel = event["OfficialEventName"] + " " + country.flag + " - Completed"
-      else:
-        cardLabel = event["OfficialEventName"] + " " + country.flag
+    #print(currentSeasonScheduleDict)
+    return currentSeasonScheduleDict
+
+def displayCurrentSeasonSchedule(currentSeasonScheduleDict):
+  # Display each event in currentSeasonScheduleDict
+    currentRound = ergast.get_race_results(season="current",round="last")
+    nextRound = currentRound.description["round"] + 1
+
+    for i, event in enumerate(currentSeasonScheduleDict.values()):
+      country = event["country"]
       
-      with st.expander(cardLabel):
-        col1, col2 = st.columns(2)
+      # Completed event
+      if pd.to_datetime(event["eventDate"]) < datetime.datetime.today(): 
+        cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag} - 🏁'''
+        cardExpand = False
+
+      # Not completed and is next event
+      elif pd.to_datetime(event["eventDate"]) > datetime.datetime.today() and event["roundNumber"] == nextRound.item():
+        cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag}'''
+        cardExpand = True
+      
+      # Not completed and is not next event
+      else: 
+        cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag}'''
+        cardExpand = False
+      
+      with st.expander(cardLabel,expanded=cardExpand):
+        col1, col2 = st.columns(2, gap="Medium")
         
         with col1:
-          st.markdown(f'''
-          **{country.flag} {event["EventName"]}** - Round {event["RoundNumber"]}\n
-          **Location:** {circuitName} - {event["Location"]}, {event["Country"]}\n
-          ''')
-
-          if pd.isna(event["Session1Date"]) is not True:       
-            st.markdown(f'''**{event["Session1"]}:** {event["Session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
-
-          if pd.isna(event["Session2Date"]) is not True:       
-            st.markdown(f'''**{event["Session2"]}:** {event["Session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
-
-          if pd.isna(event["Session3Date"]) is not True:       
-            st.markdown(f'''**{event["Session3"]}:** {event["Session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
-
-          if pd.isna(event["Session4Date"]) is not True:       
-            st.markdown(f'''**{event["Session4"]}:** {event["Session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
-
-          if pd.isna(event["Session5Date"]) is not True:       
-            st.markdown(f'''**{event["Session5"]}:** {event["Session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
+          if cardExpand:
+             st.markdown(''':red[Upcoming Race Weekend!]''')
+          
+          st.markdown(f'''**Location:** {event["circuitName"]} - {event["location"]}, {country.name}\n''')
+          if hasattr(event["session1Date"], 'tzinfo'):       
+            st.markdown(f'''**{event["session1"]}:** {event["session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
+          if hasattr(event["session2Date"], 'tzinfo'):       
+            st.markdown(f'''**{event["session2"]}:** {event["session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
+          if hasattr(event["session3Date"], 'tzinfo'):       
+            st.markdown(f'''**{event["session3"]}:** {event["session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
+          if hasattr(event["session4Date"], 'tzinfo'):       
+            st.markdown(f'''**{event["session4"]}:** {event["session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
+          if hasattr(event["session5Date"], 'tzinfo'):       
+            st.markdown(f'''**{event["session5"]}:** {event["session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
         with col2:
-          if event["EventFormat"] != "testing":
-            st.image(get_wiki_info(circuitUrl))
-            #print(circuitUrl)
-            #print(get_wiki_info(circuitUrl))
+          with stylable_container(
+            key="circuit_image_container",
+            css_styles='''
+            {
+              background-color: white;
+              border: 1px solid rgba(49, 51, 63, 0.2);
+              border-radius: 0.5rem;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              color:black;
+            }
+            '''
+          ):
+            st.image(get_wiki_info(event["circuitUrl"]), use_column_width="always")
+          st.link_button("Go to Wikipedia Page", event["circuitUrl"], use_container_width=True)
+
 
 def displayDriverCurrentStandings():
   with st.spinner('Fetching data...'):
@@ -281,32 +302,29 @@ def displayWDCPrediction():
 
 def run():
   st.write("# Welcome to Formula Dash! 🏎️")
+  currentSeasonScheduleDict = getCurrentSeasonSchedule()
 
   st.header(f"{datetime.datetime.now().year} Season Standings")
-  with st.expander("Current Season Standings"):
-    tab1, tab2 = st.tabs(["Drivers", "Constructors"])
+  with st.expander("Current Season Standings",expanded=True):
+    tab1, tab2, tab3 = st.tabs(["Drivers", "Constructors", "Championship Prediction"])
     with tab1:
-      st.header("Drivers Standings")
       displayDriverCurrentStandings()
     with tab2:
-      st.header("Constructors Standings")
       displayConstructorCurrentStandings()
+    with tab3:
+      displayWDCPrediction()
 
-  with st.expander("Championship Prediction"):
-    st.markdown(f'''Who can still win the **World Driver's Championship?**''')
-    displayWDCPrediction()
   st.divider()
 
   st.header(f"{datetime.datetime.now().year} Season Schedule")
-  st.info("Images may hard to view in Dark Mode. Switch to Light Mode for a better viewing experience.", icon="ℹ️")
-  displaySeasonSchedule()
+  displayCurrentSeasonSchedule(currentSeasonScheduleDict)
+
   st.divider()
 
   #Sidebar for Anchor links
   st.sidebar.markdown(f'''
   # Jump to
   - [Season Standings](#{datetime.datetime.now().year}-season-standings)
-  - [WDC Prediction](#world-driver-s-championship-prediction)
   - [Season Schedule](#{datetime.datetime.now().year}-season-schedule)
   ''', unsafe_allow_html=True)
     
