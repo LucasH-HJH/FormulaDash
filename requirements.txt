@@ -3,6 +3,7 @@ numpy
 pandas
 pydeck
 streamlit
+streamlit-extras
 fastf1
 seaborn
 pycountry

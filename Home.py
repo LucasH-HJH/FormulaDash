@@ -8,9 +8,12 @@ import fastf1
 import fastf1.plotting
 from fastf1.ergast import Ergast # Will be deprecated post 2024
 ergast = Ergast()
+import requests
+from bs4 import BeautifulSoup
 from urllib.request import urlopen
 from unidecode import unidecode
 from urllib.parse import unquote
+from streamlit_extras.stylable_container import stylable_container
 from streamlit.logger import get_logger
 LOGGER = get_logger(__name__)
 
@@ -19,53 +22,53 @@ def getSeason(year):
   events = season.to_records(list)
   return events
   
-# def cleanup(wiki_title):
-#     try:
-#         return unquote(wiki_title, errors='strict')
-#     except UnicodeDecodeError:
-#         return unquote(wiki_title, encoding='latin-1')
+def cleanup(wiki_title):
+    try:
+        return unquote(wiki_title, errors='strict')
+    except UnicodeDecodeError:
+        return unquote(wiki_title, encoding='latin-1')
     
-# def get_wiki_info(url):
+def get_wiki_info(url):
 
-#     # Extract the page title from the Wikipedia URL
-#     wiki_title = url.split("/")[-1]
-#     wiki_title = cleanup(wiki_title)  # Assuming cleanup function handles encoding
+    # Extract the page title from the Wikipedia URL
+    wiki_title = url.split("/")[-1]
+    wiki_title = cleanup(wiki_title)  # Assuming cleanup function handles encoding
 
-#     # Base URL for Wikipedia page
-#     base_url = "https://en.wikipedia.org/wiki/"
+    # Base URL for Wikipedia page
+    base_url = "https://en.wikipedia.org/wiki/"
 
-#     # Send request to Wikipedia page
-#     response = requests.get(f"{base_url}{wiki_title}")
+    # Send request to Wikipedia page
+    response = requests.get(f"{base_url}{wiki_title}")
 
-#     # Check for successful response
-#     if response.status_code != 200:
-#         print(f"Error: Failed to access page {url} (status code: {response.status_code})")
-#         return None
+    # Check for successful response
+    if response.status_code != 200:
+        print(f"Error: Failed to access page {url} (status code: {response.status_code})")
+        return None
 
-#     # Parse the HTML content
-#     soup = BeautifulSoup(response.content, 'html.parser')
+    # Parse the HTML content
+    soup = BeautifulSoup(response.content, 'html.parser')
 
-#     # Select all images within the infobox
-#     infobox_images = soup.select(".infobox-image img")
+    # Select all images within the infobox
+    infobox_images = soup.select(".infobox-image img")
 
-#     # Check if there are any images
-#     if not infobox_images:
-#         return None
+    # Check if there are any images
+    if not infobox_images:
+        return None
 
-#     # Handle single image case
-#     if len(infobox_images) == 1 or wiki_title == "Circuit_de_Monaco":
-#         main_image_url = infobox_images[0].get('src')
-#     # Handle multiple images (return second image)
-#     else:
-#         main_image_url = infobox_images[1].get('src')
+    # Handle single image case
+    if len(infobox_images) == 1 or wiki_title == "Circuit_de_Monaco" or wiki_title == "Melbourne_Grand_Prix_Circuit":
+        main_image_url = infobox_images[0].get('src')
+    # Handle multiple images (return second image)
+    else:
+        main_image_url = infobox_images[1].get('src')
 
-#     # Handle relative URLs (optional)
-#     if main_image_url.startswith("//"):
-#         main_image_url = f"https:{main_image_url}"
-#     elif not main_image_url.startswith("http"):
-#         main_image_url = f"{base_url}{main_image_url}"
+    # Handle relative URLs (optional)
+    if main_image_url.startswith("//"):
+        main_image_url = f"https:{main_image_url}"
+    elif not main_image_url.startswith("http"):
+        main_image_url = f"{base_url}{main_image_url}"
 
-#     return main_image_url
+    return main_image_url
 
 def getCurrentSeasonSchedule():
   with st.spinner('Fetching data...'):
@@ -146,18 +149,42 @@ def displayCurrentSeasonSchedule(currentSeasonScheduleDict):
         cardExpand = False
       
       with st.expander(cardLabel,expanded=cardExpand):
-        st.markdown(f'''**Location:** {event["circuitName"]} - {event["location"]}, {country.name}\n''')
+        col1, col2 = st.columns(2, gap="Medium")
         
-        if hasattr(event["session1Date"], 'tzinfo'):       
-          st.markdown(f'''**{event["session1"]}:** {event["session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
-        if hasattr(event["session2Date"], 'tzinfo'):       
-          st.markdown(f'''**{event["session2"]}:** {event["session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
-        if hasattr(event["session3Date"], 'tzinfo'):       
-          st.markdown(f'''**{event["session3"]}:** {event["session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
-        if hasattr(event["session4Date"], 'tzinfo'):       
-          st.markdown(f'''**{event["session4"]}:** {event["session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
-        if hasattr(event["session5Date"], 'tzinfo'):       
-          st.markdown(f'''**{event["session5"]}:** {event["session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
+        with col1:
+          if cardExpand:
+             st.markdown(''':red[Upcoming Race Weekend!]''')
+          
+          st.markdown(f'''**Location:** {event["circuitName"]} - {event["location"]}, {country.name}\n''')
+          if hasattr(event["session1Date"], 'tzinfo'):       
+            st.markdown(f'''**{event["session1"]}:** {event["session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
+          if hasattr(event["session2Date"], 'tzinfo'):       
+            st.markdown(f'''**{event["session2"]}:** {event["session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
+          if hasattr(event["session3Date"], 'tzinfo'):       
+            st.markdown(f'''**{event["session3"]}:** {event["session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
+          if hasattr(event["session4Date"], 'tzinfo'):       
+            st.markdown(f'''**{event["session4"]}:** {event["session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
+          if hasattr(event["session5Date"], 'tzinfo'):       
+            st.markdown(f'''**{event["session5"]}:** {event["session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
+
+        with col2:
+          with stylable_container(
+            key="circuit_image_container",
+            css_styles='''
+            {
+              background-color: white;
+              border: 1px solid rgba(49, 51, 63, 0.2);
+              border-radius: 0.5rem;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              color:black;
+            }
+            '''
+          ):
+            st.image(get_wiki_info(event["circuitUrl"]), use_column_width="always")
+          st.link_button("Go to Wikipedia Page", event["circuitUrl"], use_container_width=True)
+
 
 def displayDriverCurrentStandings():
   with st.spinner('Fetching data...'):
