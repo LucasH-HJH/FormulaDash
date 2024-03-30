@@ -10,6 +10,7 @@ import fastf1.plotting
 from fastf1.ergast import Ergast # Will be deprecated post 2024
 ergast = Ergast()
 import requests
+import wikipedia as wiki
 from bs4 import BeautifulSoup
 from urllib.request import urlopen
 from unidecode import unidecode
@@ -28,6 +29,17 @@ def queryDriverHeadshot():
       driverHeadshotDict[driver_abbreviation] = driver_image_url
   
   return driverHeadshotDict
+
+def queryConstructorLogo():
+  constructorLogoDict = {}
+  # HAVE TO UPDATE constructor_logo.csv MANUALLY IF THERE ARE CHANGES
+  with open("info-database/constructor_logo.csv", 'r') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+      constructor_id, constructor_logo_url = row
+      constructorLogoDict[constructor_id] = constructor_logo_url
+  
+  return constructorLogoDict
 
 def getSeason(year):
   season = fastf1.get_event_schedule(year)
@@ -245,7 +257,7 @@ def displayDriverCurrentStandings():
             driverPic = image_url
             break
           
-        if driverPic is "": # Placeholder Driver Image
+        if driverPic == "": # Placeholder Driver Image
           driverPic = "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/"
             
         # Create a dictionary to store the row data
@@ -285,13 +297,26 @@ def displayConstructorCurrentStandings():
     currentConstructorStandings = currentConstructorStandings.content[0]
     ConstructorsStandingsDf = pd.DataFrame(columns=[])
 
+    constructorLogoDict = queryConstructorLogo()
+
     for i, _ in enumerate(currentConstructorStandings.iterrows()):
       constructor = currentConstructorStandings.loc[i]
+      constructorPic = ""
 
+      # Get Constructor Logos
+      for constructor_id, constructor_logo_url in constructorLogoDict.items():
+        if constructor_id == constructor["constructorId"]:
+          constructorPic = constructor_logo_url
+          break
+        
+      if constructorPic == "": # Placeholder Driver Image
+        constructorPic = "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/"
+      
       # Create a dictionary to store the row data
       row_data = {
         "Position": constructor["positionText"],  # Use column names if different
-        "Constructor": constructor["constructorName"],
+        "Constructor": constructorPic,
+        "Name": constructor["constructorName"],
         "Current Points": constructor["points"],
         "Wins": constructor["wins"]
       }
@@ -301,6 +326,11 @@ def displayConstructorCurrentStandings():
 
     st.data_editor(
       ConstructorsStandingsDf,
+      column_config={
+         "Constructor": st.column_config.ImageColumn(
+            "Constructor", width="small"
+        )
+      },
       use_container_width=True,
       disabled=True,
       hide_index=True,
