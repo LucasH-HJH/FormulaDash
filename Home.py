@@ -1,3 +1,4 @@
+import csv
 import pandas as pd
 import datetime
 from datetime import date
@@ -16,6 +17,17 @@ from urllib.parse import unquote
 from streamlit_extras.stylable_container import stylable_container
 from streamlit.logger import get_logger
 LOGGER = get_logger(__name__)
+
+def queryDriverHeadshot():
+  driverHeadshotDict = {}
+  # HAVE TO UPDATE driver_headshot.csv MANUALLY IF THERE ARE CHANGES
+  with open("info-database/driver_headshot.csv", 'r') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+      driver_abbreviation, driver_image_url = row
+      driverHeadshotDict[driver_abbreviation] = driver_image_url
+  
+  return driverHeadshotDict
 
 def getSeason(year):
   season = fastf1.get_event_schedule(year)
@@ -127,82 +139,124 @@ def getCurrentSeasonSchedule():
 
 def displayCurrentSeasonSchedule(currentSeasonScheduleDict):
   # Display each event in currentSeasonScheduleDict
-    currentRound = ergast.get_race_results(season="current",round="last")
-    nextRound = currentRound.description["round"] + 1
+  currentRound = ergast.get_race_results(season="current",round="last")
+  nextRound = currentRound.description["round"] + 1
 
-    for i, event in enumerate(currentSeasonScheduleDict.values()):
-      country = event["country"]
-      
-      # Completed event
-      if pd.to_datetime(event["eventDate"]) < datetime.datetime.today(): 
-        cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag} - 🏁'''
-        cardExpand = False
+  for i, event in enumerate(currentSeasonScheduleDict.values()):
+    country = event["country"]
+    
+    # Completed event
+    if pd.to_datetime(event["eventDate"]) < datetime.datetime.today(): 
+      cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag} - 🏁'''
+      cardExpand = False
 
-      # Not completed and is next event
-      elif pd.to_datetime(event["eventDate"]) > datetime.datetime.today() and event["roundNumber"] == nextRound.item():
-        cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag}'''
-        cardExpand = True
+    # Not completed and is next event
+    elif pd.to_datetime(event["eventDate"]) > datetime.datetime.today() and event["roundNumber"] == nextRound.item():
+      cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag}'''
+      cardExpand = True
+    
+    # Not completed and is not next event
+    else: 
+      cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag}'''
+      cardExpand = False
+    
+    with st.expander(cardLabel,expanded=cardExpand):
+      col1, col2 = st.columns(2, gap="Medium")
       
-      # Not completed and is not next event
-      else: 
-        cardLabel = f'''Round {event["roundNumber"]} - {event["officialEventName"]} {country.flag}'''
-        cardExpand = False
-      
-      with st.expander(cardLabel,expanded=cardExpand):
-        col1, col2 = st.columns(2, gap="Medium")
+      with col1:
+        if cardExpand:
+            st.markdown(''':red[Upcoming Race Weekend!]''')
         
-        with col1:
-          if cardExpand:
-             st.markdown(''':red[Upcoming Race Weekend!]''')
-          
-          st.markdown(f'''**Location:** {event["circuitName"]} - {event["location"]}, {country.name}\n''')
-          if hasattr(event["session1Date"], 'tzinfo'):       
-            st.markdown(f'''**{event["session1"]}:** {event["session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
-          if hasattr(event["session2Date"], 'tzinfo'):       
-            st.markdown(f'''**{event["session2"]}:** {event["session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
-          if hasattr(event["session3Date"], 'tzinfo'):       
-            st.markdown(f'''**{event["session3"]}:** {event["session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
-          if hasattr(event["session4Date"], 'tzinfo'):       
-            st.markdown(f'''**{event["session4"]}:** {event["session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
-          if hasattr(event["session5Date"], 'tzinfo'):       
-            st.markdown(f'''**{event["session5"]}:** {event["session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
+        st.markdown(f'''**Location:** {event["circuitName"]} - {event["location"]}, {country.name}\n''')
+        if hasattr(event["session1Date"], 'tzinfo'):       
+          st.markdown(f'''**{event["session1"]}:** {event["session1Date"].strftime("%d %b %Y %H:%M %Z")}''')
+        if hasattr(event["session2Date"], 'tzinfo'):       
+          st.markdown(f'''**{event["session2"]}:** {event["session2Date"].strftime("%d %b %Y %H:%M %Z")}''')
+        if hasattr(event["session3Date"], 'tzinfo'):       
+          st.markdown(f'''**{event["session3"]}:** {event["session3Date"].strftime("%d %b %Y %H:%M %Z")}''')
+        if hasattr(event["session4Date"], 'tzinfo'):       
+          st.markdown(f'''**{event["session4"]}:** {event["session4Date"].strftime("%d %b %Y %H:%M %Z")}''')
+        if hasattr(event["session5Date"], 'tzinfo'):       
+          st.markdown(f'''**{event["session5"]}:** {event["session5Date"].strftime("%d %b %Y %H:%M %Z")}''')
 
-        with col2:
-          with stylable_container(
-            key="circuit_image_container",
-            css_styles='''
-            {
-              background-color: white;
-              border: 1px solid rgba(49, 51, 63, 0.2);
-              border-radius: 0.5rem;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              color:black;
-            }
-            '''
-          ):
-            st.image(get_wiki_info(event["circuitUrl"]), use_column_width="always")
-          st.link_button("Go to Wikipedia Page", event["circuitUrl"], use_container_width=True)
-
+      with col2:
+        with stylable_container(
+          key="circuit_image_container",
+          css_styles='''
+          {
+            background-color: white;
+            border: 1px solid rgba(49, 51, 63, 0.2);
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color:black;
+          }
+          '''
+        ):
+          st.image(get_wiki_info(event["circuitUrl"]), use_column_width="always")
+        st.link_button("Go to Wikipedia Page", event["circuitUrl"], use_container_width=True)
 
 def displayDriverCurrentStandings():
   with st.spinner('Fetching data...'):
+    # Get current round standings
     ergast = Ergast()
     currentDriverStandings = ergast.get_driver_standings(season='current', round='last')
-    currentDriverStandings = currentDriverStandings.content[0]
+    currentDriverStandingsContent = currentDriverStandings.content[0]
+    currentRound = currentDriverStandings.description["round"].item()
+
+    driverHeadshotDict = queryDriverHeadshot() # Get Driver Headshots
+
+    # Get previous round standings
+    lastRound = currentDriverStandings.description["round"].item() - 1
+    previousDriverStandings = ""
+    
+    if lastRound != 1: # Check if not first round
+      previousDriverStandings = ergast.get_driver_standings(season='current', round=str(lastRound))
+      previousDriverStandingsContent = previousDriverStandings.content[0]
+
     DriverStandingsDf = pd.DataFrame(columns=[])
 
-    for i, _ in enumerate(currentDriverStandings.iterrows()):
-        driver = currentDriverStandings.loc[i]
+    for i, _ in enumerate(currentDriverStandingsContent.iterrows()):
+        driverCurrent = currentDriverStandingsContent.loc[i]
+        currentStanding = driverCurrent["position"]
+        previousStanding = 0
+        driverPic = ""
 
+        for e, _ in enumerate(previousDriverStandingsContent.iterrows()):
+           driverPrev = previousDriverStandingsContent.loc[e]
+           if driverCurrent["driverId"] == driverPrev["driverId"]:
+              previousStanding = driverPrev["position"]
+
+        # Check standings difference between current and previous round
+        standingDiffLabel = ""
+
+        standingDiff = (currentStanding - previousStanding) * -1
+        if standingDiff > 0:
+           standingDiffLabel = f"{standingDiff} 🔼"
+        elif standingDiff < 0:
+           standingDiffLabel = f"{standingDiff} 🔽"
+        else:
+           standingDiffLabel = "-"
+
+        # Get Driver Headshots
+        for driver_abbr, image_url in driverHeadshotDict.items():
+          if driver_abbr == driverCurrent["driverCode"]:
+            driverPic = image_url
+            break
+          
+        if driverPic is "": # Placeholder Driver Image
+          driverPic = "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/"
+            
         # Create a dictionary to store the row data
         row_data = {
-          "Position": driver["positionText"],  # Use column names if different
-          "Driver": driver["givenName"] + ' ' + driver["familyName"],  # Combine names
-          "Constructor": driver["constructorNames"],
-          "Current Points": driver["points"],
-          "Wins": driver["wins"]
+          "Position": driverCurrent["positionText"],  # Use column names if different
+          "Driver": driverPic,
+          "Name": driverCurrent["givenName"] + ' ' + driverCurrent["familyName"],  # Combine names
+          "Constructor": driverCurrent["constructorNames"],
+          "Current Points": driverCurrent["points"],
+          "Wins": driverCurrent["wins"],
+          "+/-": standingDiffLabel
         }
 
         # Append the row data as a Series to the DataFrame
@@ -210,6 +264,14 @@ def displayDriverCurrentStandings():
 
     st.data_editor(
       DriverStandingsDf,
+      column_config={
+         "Pos +/-": st.column_config.TextColumn(
+            help="Standing difference from the previous round"
+         ),
+         "Driver": st.column_config.ImageColumn(
+            "Driver"
+        )
+      },
       height=737,
       use_container_width=True,
       disabled=True,
