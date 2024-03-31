@@ -4,6 +4,7 @@ pandas
 pydeck
 streamlit
 streamlit-extras
+streamlit_calendar
 fastf1
 seaborn
 pycountry

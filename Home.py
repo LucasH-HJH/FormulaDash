@@ -5,6 +5,7 @@ from datetime import date
 from timple.timedelta import strftimedelta
 import pycountry as pyc
 import streamlit as st
+from streamlit_calendar import calendar
 import fastf1
 import fastf1.plotting
 from fastf1.ergast import Ergast # Will be deprecated post 2024
@@ -208,6 +209,73 @@ def displayCurrentSeasonSchedule(currentSeasonScheduleDict):
         ):
           st.image(get_wiki_info(event["circuitUrl"]), use_column_width="always")
         st.link_button("Go to Wikipedia Page", event["circuitUrl"], use_container_width=True)
+
+def displayCurrentSeasonCalendar(currentSeasonScheduleDict):
+  with st.spinner('Fetching data...'):
+    events = [] # Initialize events list
+    calendar_resources = [] # Initialize calendar resources
+
+    # Populate Event Calendar Events
+    for i, event in enumerate(currentSeasonScheduleDict.values()):
+        sessionName = ""
+        
+        if event["session1"]:
+          sessionName = event['eventName'] + ' - ' + event['session1']
+          events.append({"title": sessionName, "backgroundColor": "#FFBD45", "borderColor": "#FFBD45", "start": event["session1Date"].strftime("%Y-%m-%dT%H:%M:%S"), "end": event["session1Date"].strftime("%Y-%m-%dT%H:%M:%S"), "resourceId": str(event["roundNumber"])})
+
+        if event["session2"]:
+          sessionName = event['eventName'] + ' - ' + event['session2']
+          events.append({"title": sessionName, "backgroundColor": "#FFBD45", "borderColor": "#FFBD45", "start": event["session2Date"].strftime("%Y-%m-%dT%H:%M:%S"), "end": event["session2Date"].strftime("%Y-%m-%dT%H:%M:%S"), "resourceId": str(event["roundNumber"])})
+
+        if event["session3"]:
+          sessionName = event['eventName'] + ' - ' + event['session3']
+          events.append({"title": sessionName, "backgroundColor": "#FFBD45", "borderColor": "#FFBD45", "start": event["session3Date"].strftime("%Y-%m-%dT%H:%M:%S"), "end": event["session3Date"].strftime("%Y-%m-%dT%H:%M:%S"), "resourceId": str(event["roundNumber"])})
+
+        if event["session4"]:
+          sessionName = event['eventName'] + ' - ' + event['session4']
+          events.append({"title": sessionName, "backgroundColor": "#FFBD45", "borderColor": "#FFBD45", "start": event["session4Date"].strftime("%Y-%m-%dT%H:%M:%S"), "end": event["session4Date"].strftime("%Y-%m-%dT%H:%M:%S"), "resourceId": str(event["roundNumber"])})
+
+        if event["session5"]:
+          sessionName = event['eventName'] + ' - ' + event['session5']
+          events.append({"title": sessionName, "backgroundColor": "#FF6C6C", "borderColor": "#FF6C6C", "start": event["session5Date"].strftime("%Y-%m-%dT%H:%M:%S"), "end": event["session5Date"].strftime("%Y-%m-%dT%H:%M:%S"), "resourceId": str(event["roundNumber"])})
+
+    # Populate Event Calendar Resources
+    for i, event in enumerate(currentSeasonScheduleDict.values()):
+        calendar_resources.append({"id": str(event["roundNumber"]), "event": event["officialEventName"], "location": event["location"], "date": pd.to_datetime(event["eventDate"][0]).strftime("%Y-%m-%dT%H:%M:%S")})
+
+  currentDate = date.today().strftime("%Y-%m-%d")
+
+  calendar_options = {
+      "editable": "false",
+      "navLinks": "false",
+      "resources": calendar_resources,
+      "headerToolbar": {
+          "left": "today prev,next",
+          "center": "title",
+          "right": "dayGridDay,dayGridWeek,dayGridMonth",
+      },
+      "initialDate": currentDate,
+      "initialView": "dayGridMonth",
+  }
+
+  calendar(
+      events=st.session_state.get("events", events),
+      options=calendar_options,
+      custom_css="""
+      .fc-event-past {
+          opacity: 0.8;
+      }
+      .fc-event-time {
+          font-style: italic;
+      }
+      .fc-event-title {
+          font-weight: 700;
+      }
+      .fc-toolbar-title {
+          font-size: 2rem;
+      }
+      """,
+  )
 
 def displayDriverCurrentStandings():
   with st.spinner('Fetching data...'):
@@ -453,7 +521,11 @@ def run():
   st.divider()
 
   st.header(f"{datetime.datetime.now().year} Season Schedule")
-  displayCurrentSeasonSchedule(currentSeasonScheduleDict)
+  calendarTab, scheduleTab = st.tabs(["Calendar View", "Schedule View"])
+  with calendarTab:
+    displayCurrentSeasonCalendar(currentSeasonScheduleDict)
+  with scheduleTab:
+    displayCurrentSeasonSchedule(currentSeasonScheduleDict)
 
   st.divider()
 
