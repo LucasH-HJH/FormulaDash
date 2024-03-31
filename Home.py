@@ -294,18 +294,44 @@ def displayConstructorCurrentStandings():
   with st.spinner('Fetching data...'):
     ergast = Ergast()
     currentConstructorStandings = ergast.get_constructor_standings(season='current', round='last')
+    
+    # Get previous round standings
+    lastRound = currentConstructorStandings.description["round"].item() - 1
+    previousConstructorStandings = ""
+
     currentConstructorStandings = currentConstructorStandings.content[0]
     ConstructorsStandingsDf = pd.DataFrame(columns=[])
 
     constructorLogoDict = queryConstructorLogo()
+    
+    if lastRound != 1: # Check if not first round
+      previousConstructorStandings = ergast.get_constructor_standings(season='current', round=str(lastRound))
+      previousConstructorStandingsContent = previousConstructorStandings.content[0]
 
     for i, _ in enumerate(currentConstructorStandings.iterrows()):
-      constructor = currentConstructorStandings.loc[i]
+      constructorCurrent = currentConstructorStandings.loc[i]
+      currentStanding = constructorCurrent["position"]
       constructorPic = ""
+
+      for e, _ in enumerate(previousConstructorStandingsContent.iterrows()):
+        constructorPrev = previousConstructorStandingsContent.loc[e]
+        if constructorCurrent["constructorId"] == constructorPrev["constructorId"]:
+          previousStanding = constructorPrev["position"]
+
+      # Check standings difference between current and previous round
+      standingDiffLabel = ""
+
+      standingDiff = (currentStanding - previousStanding) * -1
+      if standingDiff > 0:
+          standingDiffLabel = f"{standingDiff} 🔼"
+      elif standingDiff < 0:
+          standingDiffLabel = f"{standingDiff} 🔽"
+      else:
+          standingDiffLabel = "-"
 
       # Get Constructor Logos
       for constructor_id, constructor_logo_url in constructorLogoDict.items():
-        if constructor_id == constructor["constructorId"]:
+        if constructor_id == constructorCurrent["constructorId"]:
           constructorPic = constructor_logo_url
           break
         
@@ -314,11 +340,12 @@ def displayConstructorCurrentStandings():
       
       # Create a dictionary to store the row data
       row_data = {
-        "Position": constructor["positionText"],  # Use column names if different
+        "Position": constructorCurrent["positionText"],  # Use column names if different
         "Constructor": constructorPic,
-        "Name": constructor["constructorName"],
-        "Current Points": constructor["points"],
-        "Wins": constructor["wins"]
+        "Name": constructorCurrent["constructorName"],
+        "Current Points": constructorCurrent["points"],
+        "Wins": constructorCurrent["wins"],
+        "+/-": standingDiffLabel
       }
 
       # Append the row data as a Series to the DataFrame
@@ -344,6 +371,8 @@ def displayWDCPrediction():
     currentRound = lastRace["round"].values[0]
     driver_standings = ergast.get_driver_standings(season="current", round="last")
     driver_standings =  driver_standings.content[0]
+
+    driverHeadshotDict = queryDriverHeadshot() # Get Driver Headshots
 
     # Calculate max points for remaining season
     POINTS_FOR_SPRINT = 8 + 25 + 1  # Winning the sprint, race and fastest lap
@@ -371,10 +400,20 @@ def displayWDCPrediction():
         driver_max_points = int(driver["points"]) + max_points
         can_win = 'No' if driver_max_points < LEADER_POINTS else 'Yes'
 
+        # Get Driver Headshots
+        for driver_abbr, image_url in driverHeadshotDict.items():
+          if driver_abbr == driver["driverCode"]:
+            driverPic = image_url
+            break
+          
+        if driverPic == "": # Placeholder Driver Image
+          driverPic = "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/"
+
         # Create a dictionary to store the row data
         row_data = {
           "Position": driver["positionText"],  # Use column names if different
-          "Driver": driver["givenName"] + ' ' + driver["familyName"],  # Combine names
+          "Driver": driverPic,
+          "Name": driver["givenName"] + ' ' + driver["familyName"],  # Combine names
           "Constructor": driver["constructorNames"],
           "Current Points": driver["points"],
           "Theoretical Max Points": driver_max_points,
@@ -386,6 +425,11 @@ def displayWDCPrediction():
 
     st.data_editor(
       WDCPredictDf,
+      column_config={
+         "Driver": st.column_config.ImageColumn(
+            "Driver", width="small"
+        )
+      },
       height=737,
       use_container_width=True,
       disabled=True,
