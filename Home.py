@@ -313,9 +313,9 @@ def displayDriverCurrentStandings():
 
         standingDiff = (currentStanding - previousStanding) * -1
         if standingDiff > 0:
-           standingDiffLabel = f"{standingDiff} 🔼"
+           standingDiffLabel = f"🔼 {standingDiff}"
         elif standingDiff < 0:
-           standingDiffLabel = f"{standingDiff} 🔽"
+           standingDiffLabel = f"🔽 {standingDiff}"
         else:
            standingDiffLabel = "-"
 
@@ -391,9 +391,9 @@ def displayConstructorCurrentStandings():
 
       standingDiff = (currentStanding - previousStanding) * -1
       if standingDiff > 0:
-          standingDiffLabel = f"{standingDiff} 🔼"
+          standingDiffLabel = f"🔼 {standingDiff}"
       elif standingDiff < 0:
-          standingDiffLabel = f"{standingDiff} 🔽"
+          standingDiffLabel = f"🔽 {standingDiff}"
       else:
           standingDiffLabel = "-"
 
@@ -422,6 +422,9 @@ def displayConstructorCurrentStandings():
     st.data_editor(
       ConstructorsStandingsDf,
       column_config={
+          "Pos +/-": st.column_config.TextColumn(
+            help="Standing difference from the previous round"
+         ),
          "Constructor": st.column_config.ImageColumn(
             "Constructor", width="small"
         )

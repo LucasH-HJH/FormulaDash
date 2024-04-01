@@ -497,7 +497,7 @@ def run():
                         st.markdown(wiki.WikipediaPage(pageid=pageId).summary) # Display Summary of Team
 
 st.set_page_config(page_title="Driver/Team Viewer - Formula Dash", page_icon="👨‍🔧")
-st.markdown("# Driver/Team Viewer")
+st.markdown("# 👨‍🔧 Driver/Team Viewer")
 st.write("""View information regarding a Driver or Team participating in the current season.""")
 
 run()

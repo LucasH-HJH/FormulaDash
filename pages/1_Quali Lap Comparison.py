@@ -66,8 +66,8 @@ def displayQualiLapComparison(sessionDetails1, selectedSeason1, driverDict1, sel
     driverTel1 = driverLap1.get_car_data().add_distance()
     driverTel2 = driverLap2.get_car_data().add_distance()
 
-    driver1Color = fastf1.plotting.driver_color(selectedDriverAbbrv1)
-    driver2Color = fastf1.plotting.driver_color(selectedDriverAbbrv2)
+    #driver1Color = fastf1.plotting.driver_color(selectedDriverAbbrv1)
+    #driver2Color = fastf1.plotting.driver_color(selectedDriverAbbrv2)
 
     fig, ax = plt.subplots()
     #ax.plot(driverTel1['Distance'], driverTel1['Speed'], color=driver1Color, label=selectedDriverAbbrv1)
@@ -95,6 +95,33 @@ def displayQualiLapComparison(sessionDetails1, selectedSeason1, driverDict1, sel
         plt.suptitle(f"Fastest Quali Lap Comparison \n "f"{sessionDetails1.event['EventName']} {sessionDetails1.event.year}")
     st.pyplot(plt)
     plt.close()
+    st.divider()
+
+    def convertTimestampToString(timestamp):
+        return strftimedelta(timestamp, '%m:%s.%ms')
+    
+    col1, col2 = st.columns(2, gap="medium")
+    with col1:
+        st.subheader(f'''{selectedDriverAbbrv1} {sessionDetails1.event.year} - {driverLap1["Team"]}''')
+        st.markdown(f'''
+            **Lap Time**: {convertTimestampToString(driverLap1["LapTime"])}\n
+            **Sector 1 Time**: {convertTimestampToString(driverLap1["Sector1Time"])} ({driverLap1["SpeedI1"]} km/h)\n
+            **Sector 2 Time**: {convertTimestampToString(driverLap1["Sector2Time"])} ({driverLap1["SpeedI2"]} km/h)\n
+            **Sector 3 Time**: {convertTimestampToString(driverLap1["Sector3Time"])} ({driverLap1["SpeedFL"]} km/h)\n
+            **Tyre Compound**: {driverLap1["Compound"]}\n
+            **Tyre Life**: {int(driverLap1["TyreLife"])} Lap(s)\n
+        ''')
+
+    with col2:
+        st.subheader(f'''{selectedDriverAbbrv2} {sessionDetails2.event.year} - {driverLap2["Team"]}''')
+        st.markdown(f'''
+            **Lap Time**: {convertTimestampToString(driverLap2["LapTime"])}\n
+            **Sector 1 Time**: {convertTimestampToString(driverLap2["Sector1Time"])} ({driverLap2["SpeedI1"]} km/h)\n
+            **Sector 2 Time**: {convertTimestampToString(driverLap2["Sector2Time"])} ({driverLap2["SpeedI2"]} km/h)\n
+            **Sector 3 Time**: {convertTimestampToString(driverLap2["Sector3Time"])} ({driverLap2["SpeedFL"]} km/h)\n
+            **Tyre Compound**: {driverLap2["Compound"]}\n
+            **Tyre Life**: {int(driverLap2["TyreLife"])} Lap(s)\n
+        ''')
 
 def run():
     events1 = []
@@ -145,7 +172,7 @@ def run():
         events2 = getSeason(int(selectedSeason2))
         
         for event in events1:
-            if event["EventName"] in ["Pre-Season Testing","Pre-Season Track Session","Pre-Season Test"]:
+            if event["EventName"] in ["Pre-Season Testing","Pre-Season Track Session","Pre-Season Test"]: # ignore pre-season sessions
                 continue
             else:
                 if pd.Timestamp.today() < event["EventDate"]:
@@ -207,7 +234,7 @@ def run():
                 displayQualiLapComparison(sessionDetails1, selectedSeason1, driverDict1, selectedDriver1, sessionDetails2, selectedSeason2, driverDict2, selectedDriver2)
 
 st.set_page_config(page_title="Quali Lap Comparison - Formula Dash", page_icon="⏱️")
-st.markdown("# Qualifying Lap Comparison")
+st.markdown("# ⏱️ Qualifying Lap Comparison")
 st.write("""Compare two fastest qualifying laps by selecting the Season, Event, and Drivers.""")
 
 run()
