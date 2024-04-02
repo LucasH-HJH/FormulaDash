@@ -50,8 +50,13 @@ def getSessionDetails(year,event,session):
 
 def displaySessionDetails(sessionDetails, sessionName):
     sessionDetails = sessionDetails.results.loc[:, ['ClassifiedPosition','HeadshotUrl','FullName','Abbreviation','DriverNumber','TeamName','GridPosition','Q1','Q2','Q3','Time','Status','Points']]
+            
     df = pd.DataFrame(sessionDetails)
     df = df.reset_index(drop=True)
+
+    for index, row in df.iterrows():
+        if row['HeadshotUrl'] == "": # Placeholder Driver Image
+            row['HeadshotUrl'] = "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/"
 
     try:
         df["Time"] = df["Time"].fillna(pd.Timedelta(seconds=0))  # Replace NaNs with 0
