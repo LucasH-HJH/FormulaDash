@@ -122,7 +122,7 @@ def get_wiki_info(url):
 
 def getDrivers():
     ergast = Ergast()
-    driversInfo = ergast.get_driver_info(season='current',round='last')
+    driversInfo = ergast.get_driver_info(season='current')
     driversList = []
     
     for i, _ in enumerate(driversInfo.iterrows()):
@@ -140,6 +140,7 @@ def getDrivers():
             "driverNationality": driver["driverNationality"]
         }
         driversList.append(row_data)
+        print(row_data)
 
     return driversList
 

@@ -1,7 +1,7 @@
 import streamlit as st
 
 st.set_page_config(page_title="About - Formula Dash", page_icon="ℹ️")
-st.markdown('''## What is Formula Dash?\n
+st.markdown('''# What is Formula Dash?\n
 Formula Dash is a dashboard designed to deliver on and off-track information related to Formula One.\n
 It has features such as:
 - View the current season calendar, driver and team standings, and World Drivers' Championship prediction on the **Home** page
