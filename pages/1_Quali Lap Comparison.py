@@ -140,11 +140,11 @@ def run():
     year=0
     eventName=""
 
-    seasonsSince2021 = range(datetime.datetime(2021,1,1).year, datetime.datetime.now().year+1)
-    seasonsSince2021 = reversed(seasonsSince2021)
+    seasonsSince2019 = range(datetime.datetime(2019,1,1).year, datetime.datetime.now().year+1)
+    seasonsSince2019 = reversed(seasonsSince2019)
 
-    List2seasonsSince2021 = range(datetime.datetime(2021,1,1).year, datetime.datetime.now().year+1)
-    List2seasonsSince2021 = reversed(List2seasonsSince2021)
+    List2seasonsSince2019 = range(datetime.datetime(2019,1,1).year, datetime.datetime.now().year+1)
+    List2seasonsSince2019 = reversed(List2seasonsSince2019)
 
     st.subheader("Seasons to compare")
     col1,col2 = st.columns(2)
@@ -152,7 +152,7 @@ def run():
     with col1:
         selectedSeason1 = st.selectbox(
         "Season #1",
-        (seasonsSince2021),
+        (seasonsSince2019),
         index=None,
         key="ALPHA",
         placeholder="Select Season",
@@ -161,7 +161,7 @@ def run():
     with col2:
         selectedSeason2 = st.selectbox(
         "Season #2",
-        (List2seasonsSince2021),
+        (List2seasonsSince2019),
         index=None,
         key="BRAVO",
         placeholder="Select Season",
