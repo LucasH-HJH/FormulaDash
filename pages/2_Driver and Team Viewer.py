@@ -140,7 +140,6 @@ def getDrivers():
             "driverNationality": driver["driverNationality"]
         }
         driversList.append(row_data)
-        print(row_data)
 
     return driversList
 
